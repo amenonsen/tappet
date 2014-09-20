@@ -1,4 +1,4 @@
-CFLAGS = -Wall -std=c99 -pedantic
+CFLAGS = -funsigned-char -Wall -Wno-implicit-function-declaration -std=c99 -pedantic
 
 tappet: tappet.c tweetnacl.c devurandom.c
 
