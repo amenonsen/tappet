@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
@@ -13,15 +14,21 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
+#include <arpa/inet.h>
 #include <linux/if.h>
 #include <linux/if_tun.h>
+#include <netinet/in.h>
 
 #include "tweetnacl.h"
+
+static struct sockaddr_in in_addr;
+static struct sockaddr_in6 in6_addr;
 
 int tap_attach(const char *name);
 int read_pubkey(const char *name, unsigned char pk[crypto_box_PUBLICKEYBYTES]);
 int read_keypair(const char *name, unsigned char sk[crypto_box_SECRETKEYBYTES],
                  unsigned char pk[crypto_box_PUBLICKEYBYTES]);
+int get_sockaddr(const char *address, const char *sport, struct sockaddr **addr);
 
 int main(int argc, char *argv[])
 {
@@ -29,6 +36,7 @@ int main(int argc, char *argv[])
     unsigned char oursk[crypto_box_SECRETKEYBYTES];
     unsigned char ourpk[crypto_box_PUBLICKEYBYTES];
     unsigned char theirpk[crypto_box_PUBLICKEYBYTES];
+    struct sockaddr *server;
 
     /*
      * We require exactly five arguments: the interface name, the name
@@ -66,6 +74,15 @@ int main(int argc, char *argv[])
         return -1;
 
     if (read_pubkey(argv[3], theirpk) < 0)
+        return -1;
+
+    /*
+     * The next two arguments are an address (which may be either IPv4
+     * or IPv6, but not a hostname) and a port number, so we convert it
+     * into a sockaddr for later use.
+     */
+
+    if (get_sockaddr(argv[4], argv[5], &server) < 0)
         return -1;
 
     /* … */
@@ -226,4 +243,45 @@ int read_pubkey(const char *name, unsigned char pk[crypto_box_PUBLICKEYBYTES])
 
     (void) fclose(f);
     return 0;
+}
+
+
+/*
+ * Takes two command line arguments and tries to parse them as an IP
+ * (v4 or v6) address and a port number. If it succeeds, it stores the
+ * pointer to the resulting (statically allocated) sockaddr and returns
+ * 0, or else returns -1 on failure.
+ */
+
+int get_sockaddr(const char *address, const char *sport, struct sockaddr **addr)
+{
+    int n;
+    long int port;
+
+    errno = 0;
+    port = strtol(sport, NULL, 10);
+    if (errno != 0 || port == 0 || port >= 0xFFFF) {
+        fprintf(stderr, "Couldn't parse '%s' as port number\n", sport);
+        return -1;
+    }
+
+    n = inet_pton(AF_INET6, address, (void *) &in6_addr.sin6_addr);
+    if (n == 1) {
+        in6_addr.sin6_family = AF_INET6;
+        in6_addr.sin6_port = htons((short) port);
+        *addr = (struct sockaddr *) &in6_addr;
+        return 0;
+    }
+
+    n = inet_pton(AF_INET, address, (void *) &in_addr.sin_addr);
+    if (n == 1) {
+        in_addr.sin_family = AF_INET;
+        in_addr.sin_port = htons((short) port);
+        *addr = (struct sockaddr *) &in_addr;
+        return 0;
+    }
+
+    fprintf(stderr, "Couldn't parse '%s' as an IP address\n", address);
+
+    return -1;
 }

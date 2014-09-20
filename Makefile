@@ -1,4 +1,4 @@
-CFLAGS = -Wall -Wno-implicit-function-declaration -std=c99 -pedantic
+CFLAGS = -std=c99 -pedantic
 
 NACL = tweetnacl.c devurandom.c
 
