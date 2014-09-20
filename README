@@ -1,0 +1,12 @@
+tappet
+------
+
+This program creates a TAP interface and, in server mode, waits for
+connections; in client mode, it connects to the given server. Once
+connected, the two instances exchange encrypted packets via UDP to
+bridge between their respective TAP interfaces.
+
+This program is in the public domain. Use at your own risk.
+
+--
+Abhijit Menon-Sen <ams@toroid.org>
