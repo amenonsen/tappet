@@ -3,22 +3,22 @@ tappet
 
 This program attaches to a pre-configured TAP interface and establishes
 an encrypted UDP tunnel between itself and another copy of the program
-running on a remote host. Each instance must be given the public key of
-the other, and both sides are given the same address:port; one listens,
-the other sends.
+running on another host. Each instance must have the public key of the
+other side, and its own keypair; and both sides must be given the same
+address:port (one asks, the other accepts).
 
-On both hosts, as root:
+First, configure TAP interfaces on both hosts as root:
 
     # ip tuntap add tappet0 mode tap user tappet
     # : any other network/bridge configuration :
 
 Then on "server" host A, with address 192.0.2.34:
 
-    $ tappet tappet0 192.0.2.34:1011 <public key of B>
+    $ tappet tappet0 ~/A.keys ~/B.pub 192.0.2.34:1011
 
 And on "client" host B:
 
-    $ tappet tappet0 192.0.2.34:1011 <public key of A>
+    $ tappet tappet0 ~/B.keys ~/A.pub 192.0.2.34:1011
 
 All of these parameters are mandatory. Once started, the program runs
 forever, and exchanges packets between the TAP fd and the UDP socket,
