@@ -24,6 +24,18 @@ int main(int argc, char *argv[])
     struct ifreq ifr;
 
     /*
+     * We require exactly five arguments: the interface name, the name
+     * of a file containing our keypair, the name of a file containing
+     * the other side's public key, and the address and port of the
+     * server side.
+     */
+
+    if (argc < 6) {
+        fprintf(stderr, "Usage: tappet ifaceN /our/keypair /their/pubkey address port\n");
+        return -1;
+    }
+
+    /*
      * We attach to the TAP interface whose name is given as our first
      * argument (as described in Documentation/networking/tuntap.txt).
      * If this code is run as root, it will create the interface. (It
@@ -31,11 +43,6 @@ int main(int argc, char *argv[])
      * doesn't exist, but TUNGETIFF works on the attached fd; we have
      * only an interface name.)
      */
-
-    if (argc < 2) {
-        fprintf(stderr, "Usage: tappet <if-name>\n");
-        return -1;
-    }
 
     if (geteuid() == 0) {
         fprintf(stderr, "Please run tappet as an ordinary user\n");
@@ -59,9 +66,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    /*
-     * Now decide what to do: accept connections or connect to a server.
-     */
+    /* … */
 
     return 0;
 }
