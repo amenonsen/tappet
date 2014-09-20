@@ -1,6 +1,12 @@
-CFLAGS = -funsigned-char -Wall -Wno-implicit-function-declaration -std=c99 -pedantic
+CFLAGS = -Wall -Wno-implicit-function-declaration -std=c99 -pedantic
 
-tappet: tappet.c tweetnacl.c devurandom.c
+NACL = tweetnacl.c devurandom.c
+
+all: tappet tappet-keygen
+
+tappet: $(NACL)
+
+tappet-keygen: $(NACL)
 
 clean:
-	rm -f tappet
+	rm -f tappet tappet-keygen
