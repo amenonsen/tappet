@@ -135,7 +135,8 @@ int read_key(const char *name, unsigned char key[KEYBYTES])
  * 0, or else returns -1 on failure.
  */
 
-int get_sockaddr(const char *address, const char *sport, struct sockaddr **addr)
+int get_sockaddr(const char *address, const char *sport, struct sockaddr **addr,
+                 socklen_t *len)
 {
     int n;
     long int port;
@@ -152,6 +153,7 @@ int get_sockaddr(const char *address, const char *sport, struct sockaddr **addr)
         in6_addr.sin6_family = AF_INET6;
         in6_addr.sin6_port = htons((short) port);
         *addr = (struct sockaddr *) &in6_addr;
+        *len = sizeof(in6_addr);
         return 0;
     }
 
@@ -160,6 +162,7 @@ int get_sockaddr(const char *address, const char *sport, struct sockaddr **addr)
         in_addr.sin_family = AF_INET;
         in_addr.sin_port = htons((short) port);
         *addr = (struct sockaddr *) &in_addr;
+        *len = sizeof(in_addr);
         return 0;
     }
 
@@ -175,20 +178,15 @@ int get_sockaddr(const char *address, const char *sport, struct sockaddr **addr)
  * Returns the socket on success, or -1 on failure.
  */
 
-int udp_socket(const struct sockaddr *server, int role)
+int udp_socket(int role, const struct sockaddr *server, socklen_t len)
 {
     int sock;
-    socklen_t len;
 
     sock = socket(server->sa_family, SOCK_DGRAM, 0);
     if (sock < 0) {
         fprintf(stderr, "Couldn't create socket: %s\n", strerror(errno));
         return -1;
     }
-
-    len = sizeof(struct sockaddr_in);
-    if (server->sa_family == AF_INET6)
-        len = sizeof(struct sockaddr_in6);
 
     if (role == 1 && bind(sock, server, len) < 0) {
         fprintf(stderr, "Can't bind socket: %s\n", strerror(errno));

@@ -22,8 +22,10 @@
 
 int tap_attach(const char *name);
 int read_key(const char *name, unsigned char key[KEYBYTES]);
-int get_sockaddr(const char *address, const char *sport, struct sockaddr **addr);
-int udp_socket(const struct sockaddr *server, int role);
+int get_sockaddr(const char *address, const char *sport,
+                 struct sockaddr **addr, socklen_t *len);
+int udp_socket(int role, const struct sockaddr *server,
+               socklen_t srvlen);
 int set_blocking(int fd, int blocking);
 
 #endif

@@ -6,8 +6,8 @@
 #include "tappet.h"
 #include "tweetnacl.h"
 
-int tunnel(int role, const struct sockaddr *server, int tap,
-           int udp, unsigned char oursk[KEYBYTES],
+int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
+           int tap, int udp, unsigned char oursk[KEYBYTES],
            unsigned char theirpk[KEYBYTES]);
 
 int main(int argc, char *argv[])
@@ -16,6 +16,7 @@ int main(int argc, char *argv[])
     unsigned char oursk[KEYBYTES];
     unsigned char theirpk[KEYBYTES];
     struct sockaddr *server;
+    socklen_t srvlen;
 
     /*
      * We require exactly five arguments: the interface name, the name
@@ -61,7 +62,7 @@ int main(int argc, char *argv[])
      * into a sockaddr for later use.
      */
 
-    if (get_sockaddr(argv[4], argv[5], &server) < 0)
+    if (get_sockaddr(argv[4], argv[5], &server, &srvlen) < 0)
         return -1;
 
     /*
@@ -70,7 +71,7 @@ int main(int argc, char *argv[])
      */
 
     role = argc > 6 && strcmp(argv[6], "-l") == 0;
-    udp = udp_socket(server, role);
+    udp = udp_socket(role, server, srvlen);
     if (udp < 0)
         return -1;
 
@@ -78,7 +79,7 @@ int main(int argc, char *argv[])
      * Now we start the encrypted tunnel and let it run.
      */
 
-    return tunnel(role, server, tap, udp, oursk, theirpk);
+    return tunnel(role, server, srvlen, tap, udp, oursk, theirpk);
 }
 
 /*
@@ -87,8 +88,8 @@ int main(int argc, char *argv[])
  * forwards in the other direction.
  */
 
-int tunnel(int role, const struct sockaddr *server, int tap,
-           int udp, unsigned char oursk[KEYBYTES],
+int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
+           int tap, int udp, unsigned char oursk[KEYBYTES],
            unsigned char theirpk[KEYBYTES])
 {
     int maxfd;
@@ -264,9 +265,7 @@ int tunnel(int role, const struct sockaddr *server, int tap,
 
                 if (role == 0) {
                     target = server;
-                    tlen = sizeof(struct sockaddr_in);
-                    if (server->sa_family == AF_INET6)
-                        tlen = sizeof(struct sockaddr_in6);
+                    tlen = srvlen;
                 }
                 else {
                     if (client->sa_family == 0)
