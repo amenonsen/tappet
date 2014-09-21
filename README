@@ -3,8 +3,8 @@ tappet
 
 This program attaches to a pre-configured TAP interface and establishes
 an encrypted UDP tunnel between itself and another copy of the program
-running on another host. Each instance must have the public key of the
-other side, and its own keypair; and both sides must be given the same
+running on another host. Each instance must have its own secret key and
+the public key of the other side; and both sides must be given the same
 address and port (one side asks, the other accepts).
 
 First, configure TAP interfaces on both hosts as root:
@@ -12,13 +12,23 @@ First, configure TAP interfaces on both hosts as root:
     # ip tuntap add tappet0 mode tap user tappet
     # : any other network/bridge configuration :
 
-Then on "server" host A, with address 192.0.2.34:
+Generate keypairs on both hosts with tappet-keygen:
 
-    $ tappet tappet0 ~/A.keys ~/B.pub 192.0.2.34 1011 -l
+    $ ./tappet-keygen
+    d0d7aeb40e0110aa41290f2141d583c5ac7c794776ec9ade3af0a650a7dea154
+    fab8974038b6f0220adb591f8efe1c44f4b0def6ab4e7a51e6263ef3686bed63
 
-And on "client" host B:
+These lines are the private key and public key respectively. On host A,
+they are saved to A.key and A.pub respectively, and likewise on B. Then
+A.pub is copied to B and B.pub is copied to A.
 
-    $ tappet tappet0 ~/B.keys ~/A.pub 192.0.2.34 1011
+Then on the "server" host A, with address 192.0.2.34:
+
+    $ tappet tappet0 ~/A.key ~/B.pub 192.0.2.34 1011 -l
+
+Finally, on the "client" host B:
+
+    $ tappet tappet0 ~/B.key ~/A.pub 192.0.2.34 1011
 
 All of these parameters are mandatory. Once started, the program runs
 forever, and exchanges packets between the TAP fd and the UDP socket,

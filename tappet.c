@@ -24,19 +24,18 @@
 static struct sockaddr_in in_addr;
 static struct sockaddr_in6 in6_addr;
 
+#define KEYBYTES 32
+
 int tap_attach(const char *name);
-int read_pubkey(const char *name, unsigned char pk[crypto_box_PUBLICKEYBYTES]);
-int read_keypair(const char *name, unsigned char sk[crypto_box_SECRETKEYBYTES],
-                 unsigned char pk[crypto_box_PUBLICKEYBYTES]);
+int read_key(const char *name, unsigned char key[KEYBYTES]);
 int get_sockaddr(const char *address, const char *sport, struct sockaddr **addr);
 int udp_socket(struct sockaddr *server, int role);
 
 int main(int argc, char *argv[])
 {
     int tap, udp, role;
-    unsigned char oursk[crypto_box_SECRETKEYBYTES];
-    unsigned char ourpk[crypto_box_PUBLICKEYBYTES];
-    unsigned char theirpk[crypto_box_PUBLICKEYBYTES];
+    unsigned char oursk[KEYBYTES];
+    unsigned char theirpk[KEYBYTES];
     struct sockaddr *server;
 
     /*
@@ -47,7 +46,7 @@ int main(int argc, char *argv[])
      */
 
     if (argc < 6) {
-        fprintf(stderr, "Usage: tappet ifaceN /our/keypair /their/pubkey address port [-l]\n");
+        fprintf(stderr, "Usage: tappet ifaceN /our/privkey /their/pubkey address port [-l]\n");
         return -1;
     }
 
@@ -66,15 +65,15 @@ int main(int argc, char *argv[])
         return -1;
 
     /*
-     * Load our own keypair and the other side's public key from the
+     * Load our own secret key and the other side's public key from the
      * given files. We assume that the keys have been competently
      * generated.
      */
 
-    if (read_keypair(argv[2], oursk, ourpk) < 0)
+    if (read_key(argv[2], oursk) < 0)
         return -1;
 
-    if (read_pubkey(argv[3], theirpk) < 0)
+    if (read_key(argv[3], theirpk) < 0)
         return -1;
 
     /*
@@ -172,9 +171,6 @@ int decode_hex(char *s, char *t)
  * Tries to read 64 hex bytes followed by a newline from the given file
  * handle and write the decoded 32-byte key to the given array. Returns
  * 0 on success, -1 on failure. Does not print any error message.
- *
- * Note that this won't work if crypto_box_SECRETKEYBYTES ever differs
- * from crypto_box_PUBLICKEYBYTES, hence the hardcoded 32.
  */
 
 int read_hexkey(FILE *f, unsigned char key[32])
@@ -200,55 +196,22 @@ int read_hexkey(FILE *f, unsigned char key[32])
 
 
 /*
- * Reads secret and public keys in hex format from the first two lines
- * of the given file into the sk and pk arrays. Returns -1 on any error,
- * or 0 on success.
+ * Decodes a key in hex format from the first line of the given file
+ * into the key array. Returns -1 on any error, or 0 on success.
  */
 
-int read_keypair(const char *name,
-                 unsigned char sk[crypto_box_SECRETKEYBYTES],
-                 unsigned char pk[crypto_box_PUBLICKEYBYTES])
+int read_key(const char *name, unsigned char key[KEYBYTES])
 {
     FILE *f;
 
     f = fopen(name, "r");
     if (!f) {
-        fprintf(stderr, "Couldn't open keypair file %s: %s\n", name, strerror(errno));
+        fprintf(stderr, "Couldn't open key file %s: %s\n", name, strerror(errno));
         return -1;
     }
 
-    if (read_hexkey(f, sk) < 0) {
-        fprintf(stderr, "Couldn't read private key (64 hex characters) from %s\n", name);
-        return -1;
-    }
-
-    if (read_hexkey(f, pk) < 0) {
-        fprintf(stderr, "Couldn't read public key (64 hex characters) from %s\n", name);
-        return -1;
-    }
-
-    (void) fclose(f);
-    return 0;
-}
-
-
-/*
- * Reads a public key in hex format from the first line of the given
- * file into the pk array. Returns -1 on any error, or 0 on success.
- */
-
-int read_pubkey(const char *name, unsigned char pk[crypto_box_PUBLICKEYBYTES])
-{
-    FILE *f;
-
-    f = fopen(name, "r");
-    if (!f) {
-        fprintf(stderr, "Couldn't open public key file %s: %s\n", name, strerror(errno));
-        return -1;
-    }
-
-    if (read_hexkey(f, pk) < 0) {
-        fprintf(stderr, "Couldn't read public key (64 hex characters) from %s\n", name);
+    if (read_hexkey(f, key) < 0) {
+        fprintf(stderr, "Couldn't read key (64 hex characters) from %s\n", name);
         return -1;
     }
 
