@@ -1,6 +1,13 @@
 tappet
 ------
 
+***WARNING***
+
+The cryptography code is still not complete. Everything about encryption
+in the rest of this document is untrue.
+
+***WARNING***
+
 This program attaches to a pre-configured TAP interface and establishes
 an encrypted UDP tunnel between itself and another copy of the program
 running on another host. Each instance must have its own secret key and
