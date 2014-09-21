@@ -78,10 +78,10 @@ int decode_hex(char *s, char *t)
 
 int read_hexkey(FILE *f, unsigned char key[32])
 {
-    char line[32*2+2];
+    char line[64+1+1];
     char *p, *q;
 
-    if (fgets(line, 66, f) == NULL || strlen(line) != 65 || line[64] != '\n')
+    if (fgets(line, 64+1+1, f) == NULL || strlen(line) != 64+1 || line[64] != '\n')
         return -1;
 
     p = line;
