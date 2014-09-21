@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
     /*
      * The next two arguments are an address (which may be either IPv4
      * or IPv6, but not a hostname) and a port number, so we convert it
-     * into a sockaddr for later use.
+     * into a sockaddr.
      */
 
     if (get_sockaddr(argv[4], argv[5], &server, &srvlen) < 0)
