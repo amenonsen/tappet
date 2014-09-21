@@ -1,4 +1,4 @@
-CFLAGS = -std=c99 -pedantic
+CFLAGS = $(OPTIM) -D_POSIX_SOURCE -std=c99 -pedantic
 
 NACL = tweetnacl.c devurandom.c
 

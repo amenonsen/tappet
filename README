@@ -14,13 +14,10 @@ First, configure TAP interfaces on both hosts as root:
 
 Generate keypairs on both hosts with tappet-keygen:
 
-    $ ./tappet-keygen
-    d0d7aeb40e0110aa41290f2141d583c5ac7c794776ec9ade3af0a650a7dea154
-    fab8974038b6f0220adb591f8efe1c44f4b0def6ab4e7a51e6263ef3686bed63
+    $ ./tappet-keygen A
 
-These lines are the private key and public key respectively. On host A,
-they are saved to A.key and A.pub respectively, and likewise on B. Then
-A.pub is copied to B and B.pub is copied to A.
+This will put the secret key into A.key and the public key into A.pub.
+Run the equivalent command on B, then copy A.pub to B, and B.pub to A.
 
 Then on the "server" host A, with address 192.0.2.34:
 
