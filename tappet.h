@@ -26,6 +26,7 @@ int get_sockaddr(const char *address, const char *sport,
                  struct sockaddr **addr, socklen_t *len);
 int udp_socket(int role, const struct sockaddr *server,
                socklen_t srvlen);
+void describe_sockaddr(const struct sockaddr *addr, char *desc, int desclen);
 int set_blocking(int fd, int blocking);
 
 #endif

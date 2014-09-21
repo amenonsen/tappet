@@ -225,3 +225,33 @@ int set_blocking(int fd, int blocking)
 
     return 0;
 }
+
+
+/*
+ * Given a pointer to a sockaddr, writes a description of it to the
+ * given character array, or "[unknown]" if it cannot be described.
+ */
+
+void describe_sockaddr(const struct sockaddr *addr, char *desc, int desclen)
+{
+    const void *inaddr;
+    char port[16];
+
+    if (addr->sa_family == AF_INET6) {
+        struct sockaddr_in6 *sin6 = (struct sockaddr_in6 *) &addr;
+        inaddr = (const void *) &sin6->sin6_addr;
+        snprintf(port, 16, "[:%d]", sin6->sin6_port);
+    }
+    else {
+        struct sockaddr_in *sin = (struct sockaddr_in *) &addr;
+        inaddr = (const void *) &sin->sin_addr;
+        snprintf(port, 16, ":%d", sin->sin_port);
+    }
+
+    if (inet_ntop(addr->sa_family, inaddr, desc, desclen)) {
+        strcat(desc, port);
+    }
+    else {
+        strcpy(desc, "[unknown]");
+    }
+}

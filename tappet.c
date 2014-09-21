@@ -197,30 +197,17 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
                  */
 
                 if (n == 0 || n > 65536) {
-                    char clientaddr[256] = "UNKNOWN";
-                    const void *addr;
-                    int port;
+                    char clientaddr[256];
 
-                    if (client->sa_family == AF_INET6) {
-                        struct sockaddr_in6 * sin6 = (struct sockaddr_in6 *) &client;
-                        addr = (const void *) &sin6->sin6_addr;
-                        port = sin6->sin6_port;
-                    }
-                    else {
-                        struct sockaddr_in * sin = (struct sockaddr_in *) &client;
-                        addr = (const void *) &sin->sin_addr;
-                        port = sin->sin_port;
-                    }
-
-                    (void) inet_ntop(client->sa_family, addr, clientaddr, 256);
+                    describe_sockaddr(client, clientaddr, 256);
 
                     if (n == 0) {
-                        fprintf(stderr, "Orderly shutdown from client %s:%d; ignoring\n",
-                                clientaddr, port);
+                        fprintf(stderr, "Orderly shutdown from client %s; ignoring\n",
+                                clientaddr);
                     }
                     else {
                         fprintf(stderr, "Received oversize (%d bytes) packet from "
-                                "client %s:%d; ignoring\n", n, clientaddr, port);
+                                "client %s; ignoring\n", n, clientaddr);
                     }
 
                     continue;
