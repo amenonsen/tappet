@@ -23,7 +23,7 @@ int main(int argc, char *argv[])
     strncpy(f, argv[1], 123);
     strcat(f, ".key");
     fd = open(f, O_CREAT|O_EXCL|O_WRONLY, 0600);
-    if (fd > 0)
+    if (fd >= 0)
         key = fdopen(fd, "w");
     if (fd < 0 || !key) {
         fprintf(stderr, "Can't open %s: %s\n", f, strerror(errno));
@@ -33,7 +33,7 @@ int main(int argc, char *argv[])
     strncpy(f, argv[1], 123);
     strcat(f, ".pub");
     fd = open(f, O_CREAT|O_EXCL|O_WRONLY, 0644);
-    if (fd > 0)
+    if (fd >= 0)
         pub = fdopen(fd, "w");
     if (fd < 0 || !pub) {
         fprintf(stderr, "Can't open %s: %s\n", f, strerror(errno));
