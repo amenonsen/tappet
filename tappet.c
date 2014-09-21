@@ -33,7 +33,7 @@ int udp_socket(struct sockaddr *server, int role);
 
 int main(int argc, char *argv[])
 {
-    int fd, sock, role;
+    int tap, udp, role;
     unsigned char oursk[crypto_box_SECRETKEYBYTES];
     unsigned char ourpk[crypto_box_PUBLICKEYBYTES];
     unsigned char theirpk[crypto_box_PUBLICKEYBYTES];
@@ -61,8 +61,8 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    fd = tap_attach(argv[1]);
-    if (fd < 0)
+    tap = tap_attach(argv[1]);
+    if (tap < 0)
         return -1;
 
     /*
@@ -92,8 +92,8 @@ int main(int argc, char *argv[])
      */
 
     role = argc > 6 && strcmp(argv[6], "-l") == 0;
-    sock = udp_socket(server, role);
-    if (sock < 0)
+    udp = udp_socket(server, role);
+    if (udp < 0)
         return -1;
 
     /* … */
