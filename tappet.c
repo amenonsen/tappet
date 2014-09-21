@@ -29,10 +29,11 @@ int read_pubkey(const char *name, unsigned char pk[crypto_box_PUBLICKEYBYTES]);
 int read_keypair(const char *name, unsigned char sk[crypto_box_SECRETKEYBYTES],
                  unsigned char pk[crypto_box_PUBLICKEYBYTES]);
 int get_sockaddr(const char *address, const char *sport, struct sockaddr **addr);
+int udp_socket(struct sockaddr *server, int role);
 
 int main(int argc, char *argv[])
 {
-    int fd;
+    int fd, sock, role;
     unsigned char oursk[crypto_box_SECRETKEYBYTES];
     unsigned char ourpk[crypto_box_PUBLICKEYBYTES];
     unsigned char theirpk[crypto_box_PUBLICKEYBYTES];
@@ -46,7 +47,7 @@ int main(int argc, char *argv[])
      */
 
     if (argc < 6) {
-        fprintf(stderr, "Usage: tappet ifaceN /our/keypair /their/pubkey address port\n");
+        fprintf(stderr, "Usage: tappet ifaceN /our/keypair /their/pubkey address port [-l]\n");
         return -1;
     }
 
@@ -83,6 +84,16 @@ int main(int argc, char *argv[])
      */
 
     if (get_sockaddr(argv[4], argv[5], &server) < 0)
+        return -1;
+
+    /*
+     * Now we create a UDP socket. If there's a remaining -l, we'll bind
+     * the server sockaddr to it, otherwise we'll connect to it.
+     */
+
+    role = argc > 6 && strcmp(argv[6], "-l") == 0;
+    sock = udp_socket(server, role);
+    if (sock < 0)
         return -1;
 
     /* … */
@@ -284,4 +295,39 @@ int get_sockaddr(const char *address, const char *sport, struct sockaddr **addr)
     fprintf(stderr, "Couldn't parse '%s' as an IP address\n", address);
 
     return -1;
+}
+
+
+/*
+ * Given a sockaddr and a role (1 for server, 0 for client), creates a
+ * UDP socket and either binds or connects the given sockaddr to it.
+ * Returns the socket on success, or -1 on failure.
+ */
+
+int udp_socket(struct sockaddr *server, int role)
+{
+    int sock;
+    socklen_t len;
+
+    sock = socket(server->sa_family, SOCK_DGRAM, 0);
+    if (sock < 0) {
+        fprintf(stderr, "Couldn't create socket: %s\n", strerror(errno));
+        return -1;
+    }
+
+    len = sizeof(struct sockaddr_in);
+    if (server->sa_family == AF_INET6)
+        len = sizeof(struct sockaddr_in6);
+
+    if (role == 1 && bind(sock, server, len) < 0) {
+        fprintf(stderr, "Can't bind socket: %s\n", strerror(errno));
+        return -1;
+    }
+
+    else if (role == 0 && connect(sock, server, len) < 0) {
+        fprintf(stderr, "Can't connect socket: %s\n", strerror(errno));
+        return -1;
+    }
+
+    return sock;
 }

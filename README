@@ -14,7 +14,7 @@ First, configure TAP interfaces on both hosts as root:
 
 Then on "server" host A, with address 192.0.2.34:
 
-    $ tappet tappet0 ~/A.keys ~/B.pub 192.0.2.34 1011
+    $ tappet tappet0 ~/A.keys ~/B.pub 192.0.2.34 1011 -l
 
 And on "client" host B:
 
