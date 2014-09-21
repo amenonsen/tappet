@@ -162,7 +162,7 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
 
         err = select(maxfd+1, &r, NULL, NULL, NULL);
         if (err < 0)
-            return n;
+            return err;
 
         /*
          * We read a complete packet from the UDP socket (or die if our
