@@ -1,12 +1,12 @@
 CFLAGS = $(OPTIM) -D_POSIX_SOURCE -std=c99 -pedantic
 
-NACL = tweetnacl.c devurandom.c
+SOURCES = util.c tweetnacl.c devurandom.c
 
 all: tappet tappet-keygen
 
-tappet: $(NACL)
+tappet: $(SOURCES)
 
-tappet-keygen: $(NACL)
+tappet-keygen: $(SOURCES)
 
 clean:
 	rm -f tappet tappet-keygen
