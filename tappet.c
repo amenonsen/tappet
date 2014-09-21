@@ -11,6 +11,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/ioctl.h>
+#include <sys/select.h>
 #include <sys/socket.h>
 #include <unistd.h>
 
@@ -29,7 +30,10 @@ static struct sockaddr_in6 in6_addr;
 int tap_attach(const char *name);
 int read_key(const char *name, unsigned char key[KEYBYTES]);
 int get_sockaddr(const char *address, const char *sport, struct sockaddr **addr);
-int udp_socket(struct sockaddr *server, int role);
+int udp_socket(const struct sockaddr *server, int role);
+int tunnel(int role, const struct sockaddr *server, int tap,
+           int udp, unsigned char oursk[KEYBYTES],
+           unsigned char theirpk[KEYBYTES]);
 
 int main(int argc, char *argv[])
 {
@@ -95,9 +99,11 @@ int main(int argc, char *argv[])
     if (udp < 0)
         return -1;
 
-    /* … */
+    /*
+     * Now we start the encrypted tunnel and let it run.
+     */
 
-    return 0;
+    return tunnel(role, server, tap, udp, oursk, theirpk);
 }
 
 /*
@@ -123,7 +129,7 @@ int tap_attach(const char *name)
 
     memset(&ifr, 0, sizeof(ifr));
     strncpy(ifr.ifr_name, name, IFNAMSIZ);
-    ifr.ifr_flags = IFF_TAP;
+    ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
 
     n = ioctl(fd, TUNSETIFF, (void *) &ifr);
     if (n < 0) {
@@ -267,7 +273,7 @@ int get_sockaddr(const char *address, const char *sport, struct sockaddr **addr)
  * Returns the socket on success, or -1 on failure.
  */
 
-int udp_socket(struct sockaddr *server, int role)
+int udp_socket(const struct sockaddr *server, int role)
 {
     int sock;
     socklen_t len;
@@ -293,4 +299,234 @@ int udp_socket(struct sockaddr *server, int role)
     }
 
     return sock;
+}
+
+
+/*
+ * Sets the O_NONBLOCK flag on the given fd if blocking is non-zero, or
+ * clears it if blocking is zero. Returns 0 on success and -1 on error.
+ */
+
+int set_blocking(int fd, int blocking)
+{
+    int flags;
+
+    flags = fcntl(fd, F_GETFL, 0);
+    if (flags < 0)
+        return -1;
+
+    if (!blocking)
+        flags |= O_NONBLOCK;
+    else
+        flags &= ~O_NONBLOCK;
+
+    if (fcntl(fd, F_SETFL, flags) < 0)
+        return -1;
+
+    return 0;
+}
+
+
+/*
+ * Stays in a loop reading packets from both the TAP device and the UDP
+ * socket. Encrypts and forwards packets from TAP→UDP, and decrypts and
+ * forwards in the other direction.
+ */
+
+int tunnel(int role, const struct sockaddr *server, int tap,
+           int udp, unsigned char oursk[KEYBYTES],
+           unsigned char theirpk[KEYBYTES])
+{
+    int maxfd;
+    unsigned char buf[65536];
+    unsigned char k[crypto_box_BEFORENMBYTES];
+    struct sockaddr_in pin_addr;
+    struct sockaddr_in pin6_addr;
+    struct sockaddr *client;
+    socklen_t clientlen;
+
+    /*
+     * Precompute a shared secret from the two keys.
+     */
+
+    crypto_box_beforenm(k, oursk, theirpk);
+
+    /*
+     * The client always knows where to send UDP packets, but the server
+     * has to wait until it receives a valid packet from the client. To
+     * keep the code simple, both sides always use sendto(). The client
+     * does connect on the socket, but the server doesn't (so that it
+     * can accept packets from a client whose IP address has changed).
+     * Here we set up a sockaddr_in{,6} for the client address.
+     */
+
+    if (server->sa_family == AF_INET6) {
+        memset(&pin6_addr, 0, sizeof(pin6_addr));
+        client = (struct sockaddr *) &pin6_addr;
+        clientlen = sizeof(pin6_addr);
+    }
+    else {
+        memset(&pin_addr, 0, sizeof(pin_addr));
+        client = (struct sockaddr *) &pin_addr;
+        clientlen = sizeof(pin_addr);
+    }
+
+    /*
+     * We want to do non-blocking reads on the TAP fd to drain the queue
+     * on every read notification, but we'd prefer to do blocking writes
+     * rather than buffering. It's cheap to set and clear O_NONBLOCK, so
+     * that's what we do.
+     *
+     * We don't have to do this for the UDP socket, because we can just
+     * use recvfrom(…, MSG_DONTWAIT) and sendto without MSG_DONTWAIT to
+     * get exactly the semantics we need.
+     */
+
+    set_blocking(tap, 0);
+
+    /*
+     * Now both sides loop waiting for readability events on their fds.
+     */
+
+    maxfd = tap > udp ? tap : udp;
+
+    while (1) {
+        fd_set r;
+        int n, err;
+
+        FD_ZERO(&r);
+        FD_SET(udp, &r);
+
+        /*
+         * The server doesn't listen for TAP packets until it knows its
+         * client's address. The client always listens.
+         */
+
+        if (role == 0 || client->sa_family != 0)
+            FD_SET(tap, &r);
+
+        err = select(maxfd+1, &r, NULL, NULL, NULL);
+        if (err < 0)
+            return n;
+
+        /*
+         * We read a complete packet from the UDP socket (or die if our
+         * ridiculously large buffer is still not enough to prevent the
+         * packet from being truncated) and try to decrypt it. If that
+         * fails, we discard the packet silently. Otherwise we write
+         * the decrypted result to the TAP fd in one go.
+         */
+
+        if (FD_ISSET(udp, &r)) {
+            while (1) {
+                n = recvfrom(udp, (void *) buf, 65536, MSG_DONTWAIT|MSG_TRUNC,
+                             client, &clientlen);
+
+                /*
+                 * Either there's nothing to read, or something broke.
+                 */
+
+                if (n < 0) {
+                    if (errno == EAGAIN || errno == EWOULDBLOCK)
+                        break;
+
+                    fprintf(stderr, "Error reading from UDP socket: %s\n",
+                            strerror(errno));
+                    return n;
+                }
+
+                /*
+                 * We complain at length about the "connection" closing
+                 * or receiving oversized packets, but we ultimately
+                 * ignore them and carry on.
+                 */
+
+                if (n == 0 || n > 65536) {
+                    char clientaddr[256] = "UNKNOWN";
+                    const void *addr;
+                    int port;
+
+                    if (client->sa_family == AF_INET6) {
+                        struct sockaddr_in6 * sin6 = (struct sockaddr_in6 *) &client;
+                        addr = (const void *) &sin6->sin6_addr;
+                        port = sin6->sin6_port;
+                    }
+                    else {
+                        struct sockaddr_in * sin = (struct sockaddr_in *) &client;
+                        addr = (const void *) &sin->sin_addr;
+                        port = sin->sin_port;
+                    }
+
+                    (void) inet_ntop(client->sa_family, addr, clientaddr, 256);
+
+                    if (n == 0) {
+                        fprintf(stderr, "Orderly shutdown from client %s:%d; ignoring\n",
+                                clientaddr, port);
+                    }
+                    else {
+                        fprintf(stderr, "Received oversize (%d bytes) packet from "
+                                "client %s:%d; ignoring\n", clientaddr, port);
+                    }
+
+                    continue;
+                }
+
+                /*
+                 * We have a complete packet. Write it to the TAP device
+                 * (without any decryption yet).
+                 */
+
+                set_blocking(tap, 1);
+                if (write(tap, buf, n) < 0) {
+                    fprintf(stderr, "Error writing to TAP: %s\n", strerror(errno));
+                    return -1;
+                }
+                set_blocking(tap, 0);
+            }
+        }
+
+        /*
+         * We read ethernet frames from the TAP device in much the same
+         * way as above, except that we use read and sendto instead of
+         * recfrom and write.
+         */
+
+        if (FD_ISSET(tap, &r)) {
+            while (1) {
+                const struct sockaddr *target;
+                socklen_t tlen;
+
+                n = read(tap, buf, 65536);
+
+                if (n < 0) {
+                    if (errno == EAGAIN || errno == EWOULDBLOCK)
+                        break;
+                }
+
+                if (n == 0) {
+                    fprintf(stderr, "TAP fd closed; exiting\n");
+                    return -1;
+                }
+
+                if (role == 0) {
+                    target = server;
+                    tlen = sizeof(struct sockaddr_in);
+                    if (server->sa_family == AF_INET6)
+                        tlen = sizeof(struct sockaddr_in6);
+                }
+                else {
+                    if (client->sa_family == 0)
+                        continue;
+                    target = client;
+                    tlen = clientlen;
+                }
+
+                err = sendto(udp, buf, n, 0, target, tlen);
+                if (err < 0) {
+                    fprintf(stderr, "Error writing to UDP: %s\n", strerror(errno));
+                    return -1;
+                }
+            }
+        }
+    }
 }
