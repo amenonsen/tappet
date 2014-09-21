@@ -1,8 +1,3 @@
-/*
- * Abhijit Menon-Sen <ams@toroid.org>
- * Public domain; 2014-09-20
- */
-
 #include "tappet.h"
 
 static struct sockaddr_in in_addr;

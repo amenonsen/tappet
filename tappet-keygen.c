@@ -1,8 +1,3 @@
-/*
- * Abhijit Menon-Sen <ams@toroid.org>
- * Public domain; 2014-09-20
- */
-
 #include <errno.h>
 #include <fcntl.h>
 #include <stdio.h>

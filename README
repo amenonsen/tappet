@@ -38,7 +38,8 @@ All of these parameters are mandatory. Once started, the program runs
 forever, and exchanges packets between the TAP fd and the UDP socket,
 encrypting in one direction and decrypting in the other.
 
-This program is in the public domain. Use at your own risk.
+This code is MIT licensed. Use at your own risk.
 
 --
 Abhijit Menon-Sen <ams@toroid.org>
+2014-09-20
