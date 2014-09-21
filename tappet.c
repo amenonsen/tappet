@@ -19,9 +19,9 @@ int main(int argc, char *argv[])
 
     /*
      * We require exactly five arguments: the interface name, the name
-     * of a file containing our keypair, the name of a file containing
-     * the other side's public key, and the address and port of the
-     * server side.
+     * of a file that contains our private key, the name of a file that
+     * contains the other side's public key, and the address and port of
+     * the server side.
      */
 
     if (argc < 6) {
@@ -219,7 +219,7 @@ int tunnel(int role, const struct sockaddr *server, int tap,
                     }
                     else {
                         fprintf(stderr, "Received oversize (%d bytes) packet from "
-                                "client %s:%d; ignoring\n", clientaddr, port);
+                                "client %s:%d; ignoring\n", n, clientaddr, port);
                     }
 
                     continue;
