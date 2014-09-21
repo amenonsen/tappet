@@ -219,9 +219,13 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
                  */
 
                 set_blocking(tap, 1);
-                if (write(tap, buf, n) < 0) {
-                    fprintf(stderr, "Error writing to TAP: %s\n", strerror(errno));
-                    return -1;
+                while (n > 0) {
+                    int written = write(tap, buf, n);
+                    if (written <= 0) {
+                        fprintf(stderr, "Error writing to TAP: %s\n", strerror(errno));
+                        return -1;
+                    }
+                    n -= written;
                 }
                 set_blocking(tap, 0);
             }
