@@ -48,11 +48,18 @@ int main()
     dump("n", n, crypto_box_NONCEBYTES);
 
     i = 0;
-    while (i < 140) {
+    while (i < 123140) {
         increment_nonce(0, n);
         i++;
     }
     dump("n'", n, crypto_box_NONCEBYTES);
+
+    i = 0;
+    while (i < 35983224) {
+        increment_nonce(0, n);
+        i++;
+    }
+    dump("n''", n, crypto_box_NONCEBYTES);
 
     memset(c, 0, crypto_box_ZEROBYTES+16);
     memset(m, 0, crypto_box_ZEROBYTES+16);

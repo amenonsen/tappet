@@ -61,10 +61,11 @@ void increment_nonce(int role, unsigned char nonce[NONCEBYTES])
     do {
         d = nonce + --idx;
 
-        if (*d+inc < 255) {
+        if (*d+inc <= 255) {
             *d += inc;
             return;
         }
+        *d = 0;
 
         inc = 1;
     }
