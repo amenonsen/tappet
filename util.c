@@ -272,3 +272,53 @@ int tap_write(int tap, unsigned char *buf, int n)
     set_blocking(tap, 0);
     return 0;
 }
+
+
+/*
+ * Sends n characters from the given buffer to the given address through
+ * the UDP socket. Retries with smaller n if the packet is too large.
+ * Returns 0 on success, or prints an error and returns -1 on failure.
+ */
+
+int udp_write(int udp, unsigned char *buf, int n,
+              const struct sockaddr *addr, socklen_t addrlen)
+{
+    int err;
+    int sent = 0;
+    int msglen = n;
+    unsigned char *p = buf;
+
+    /*
+     * Unlike tap_write above, we should not get short writes on this
+     * datagram socket. Either the packet will be sent in its entirety
+     * (we're writing in blocking mode), or we should get EMSGSIZE. In
+     * most cases, we should be done after the first sendto.
+     */
+
+    while (sent < n) {
+        err = sendto(udp, p, msglen, 0, addr, addrlen);
+
+        if (err < 0 && errno != EMSGSIZE) {
+            fprintf(stderr, "Error writing to UDP socket: %s\n",
+                    strerror(errno));
+            return -1;
+        }
+
+        if (err < 0) {
+            msglen /= 2;
+            if (msglen == 0) {
+                fprintf(stderr, "Error writing to UDP socket: %s\n",
+                        strerror(errno));
+                return -1;
+            }
+        }
+        else {
+            p += err;
+            if (p+msglen > buf+n)
+                msglen = buf+n - p;
+            sent += err;
+        }
+    }
+
+    return 0;
+}

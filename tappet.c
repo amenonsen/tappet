@@ -241,11 +241,8 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
                     return -1;
                 }
 
-                err = sendto(udp, buf, n, 0, peer, peerlen);
-                if (err < 0) {
-                    fprintf(stderr, "Error writing to UDP: %s\n", strerror(errno));
+                if (udp_write(udp, buf, n, peer, peerlen) < 0)
                     return -1;
-                }
             }
         }
     }

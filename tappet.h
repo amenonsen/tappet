@@ -29,5 +29,7 @@ int udp_socket(int role, const struct sockaddr *server,
 void describe_sockaddr(const struct sockaddr *addr, char *desc, int desclen);
 int set_blocking(int fd, int blocking);
 int tap_write(int tap, unsigned char *buf, int n);
+int udp_write(int udp, unsigned char *buf, int n,
+              const struct sockaddr *addr, socklen_t len);
 
 #endif
