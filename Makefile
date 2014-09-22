@@ -8,5 +8,7 @@ tappet: $(SOURCES)
 
 tappet-keygen: $(SOURCES)
 
+nacl-test: $(SOURCES)
+
 clean:
-	rm -f tappet tappet-keygen
+	rm -f tappet tappet-keygen nacl-test
