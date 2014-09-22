@@ -94,8 +94,8 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
     int maxfd;
     unsigned char ptbuf[2048];
     unsigned char ctbuf[2048];
-    unsigned char ournonce[crypto_box_NONCEBYTES];
-    unsigned char theirnonce[crypto_box_NONCEBYTES];
+    unsigned char ournonce[NONCEBYTES];
+    unsigned char theirnonce[NONCEBYTES];
     unsigned char k[crypto_box_BEFORENMBYTES];
     struct sockaddr_storage peeraddr;
     struct sockaddr *peer;
@@ -162,13 +162,13 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
 
         if (FD_ISSET(udp, &r)) {
             while (1) {
-                unsigned char lastnonce[crypto_box_NONCEBYTES];
+                unsigned char lastnonce[NONCEBYTES];
 
                 memcpy(lastnonce, theirnonce, sizeof(theirnonce));
 
                 n = udp_read(udp, theirnonce, ctbuf, sizeof(ctbuf), peer, &peerlen);
 
-                if (n > 0 && memcmp(lastnonce, theirnonce, crypto_box_NONCEBYTES) >= 0)
+                if (n > 0 && memcmp(lastnonce, theirnonce, NONCEBYTES) >= 0)
                     n = -1;
                 if (n > 0)
                     n = decrypt(k, theirnonce, ctbuf, n, ptbuf, sizeof(ptbuf));

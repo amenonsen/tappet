@@ -21,6 +21,7 @@
 #include "tweetnacl.h"
 
 #define KEYBYTES 32
+#define NONCEBYTES crypto_box_NONCEBYTES
 
 int tap_attach(const char *name);
 int read_key(const char *name, unsigned char key[KEYBYTES]);
@@ -31,21 +32,21 @@ int udp_socket(int role, const struct sockaddr *server,
 void describe_sockaddr(const struct sockaddr *addr, char *desc, int desclen);
 int tap_read(int tap, unsigned char *buf, int len);
 int tap_write(int tap, unsigned char *buf, int len);
-int udp_read(int udp, unsigned char nonce[crypto_box_NONCEBYTES],
+int udp_read(int udp, unsigned char nonce[NONCEBYTES],
              unsigned char *buf, int len, struct sockaddr *addr,
              socklen_t *addrlen);
-int udp_write(int udp, unsigned char nonce[crypto_box_NONCEBYTES],
+int udp_write(int udp, unsigned char nonce[NONCEBYTES],
               unsigned char *buf, int len, const struct sockaddr *addr,
               socklen_t addrlen);
 
-void generate_nonce(int role, unsigned char nonce[crypto_box_NONCEBYTES]);
-void increment_nonce(int role, unsigned char nonce[crypto_box_NONCEBYTES]);
+void generate_nonce(int role, unsigned char nonce[NONCEBYTES]);
+void increment_nonce(int role, unsigned char nonce[NONCEBYTES]);
 int decrypt(unsigned char k[crypto_box_BEFORENMBYTES],
-            unsigned char nonce[crypto_box_NONCEBYTES],
+            unsigned char nonce[NONCEBYTES],
             unsigned char *ctbuf, int ctlen,
             unsigned char *ptbuf, int ptlen);
 int encrypt(unsigned char k[crypto_box_BEFORENMBYTES],
-            unsigned char nonce[crypto_box_NONCEBYTES],
+            unsigned char nonce[NONCEBYTES],
             unsigned char *ptbuf, int ptlen,
             unsigned char *ctbuf, int ctlen);
 

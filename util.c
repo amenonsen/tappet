@@ -318,24 +318,44 @@ int tap_write(int tap, unsigned char *buf, int len)
 
 
 /*
- * Reads up to n characters into the buffer from the UDP socket. Returns
- * the number of characters read on success, or 0 if there were no data
- * available, or -1 if the caller should try again (i.e., an error that
- * can be ignored), or prints an error and returns -2 on failure.
+ * Reads the complete nonce and up to len bytes of data from the UDP
+ * socket into the given buffer.
+ *
+ * Returns the number of bytes stored in the buffer on success (i.e.,
+ * when a complete nonce and a complete packet were read).
+ *
+ * Otherwise returns 0 if there were no bytes to be read. Returns -1 if
+ * the caller should try again (i.e., an error occurred that can be
+ * ignored), or prints an error and returns -2 on failure.
  */
 
-int udp_read(int udp,unsigned char nonce[crypto_box_NONCEBYTES],
+int udp_read(int udp,unsigned char nonce[NONCEBYTES],
              unsigned char *buf, int len, struct sockaddr *addr,
              socklen_t *addrlen)
 {
     int n;
+    struct msghdr msg;
+    struct iovec iov[2];
     char peeraddr[256];
 
-    n = recvfrom(udp, (void *) buf, len, MSG_DONTWAIT|MSG_TRUNC,
-                 addr, addrlen);
+    iov[0].iov_base = nonce;
+    iov[0].iov_len = NONCEBYTES;
 
-    if (n > 0 && n <= len)
-        return n;
+    iov[1].iov_base = buf;
+    iov[1].iov_len = len;
+
+    msg.msg_name = (void *) addr;
+    msg.msg_namelen = *addrlen;
+    msg.msg_iov = iov;
+    msg.msg_iovlen = 2;
+    msg.msg_control = NULL;
+    msg.msg_controllen = 0;
+    msg.msg_flags = 0;
+
+    n = recvmsg(udp, &msg, MSG_DONTWAIT|MSG_TRUNC);
+
+    if (n > NONCEBYTES && !(msg.msg_flags & MSG_TRUNC))
+        return n-NONCEBYTES;
 
     if (n < 0) {
         if (errno == EAGAIN || errno == EWOULDBLOCK)
@@ -347,9 +367,8 @@ int udp_read(int udp,unsigned char nonce[crypto_box_NONCEBYTES],
     }
 
     /*
-     * We complain at length about the "connection" closing
-     * or receiving oversized packets, but we ultimately
-     * ignore them and carry on.
+     * We complain about some errors to aid debugging, but ultimately
+     * ignore them and move on.
      */
 
     describe_sockaddr(addr, peeraddr, 256);
@@ -358,7 +377,11 @@ int udp_read(int udp,unsigned char nonce[crypto_box_NONCEBYTES],
         fprintf(stderr, "Orderly shutdown from %s; ignoring\n",
                 peeraddr);
     }
-    else if (n > len) {
+    else if (n <= NONCEBYTES) {
+        fprintf(stderr, "Received undersize (%d bytes) packet from "
+                "%s; ignoring\n", n, peeraddr);
+    }
+    else if (msg.msg_flags & MSG_TRUNC) {
         fprintf(stderr, "Received oversize (%d bytes) packet from "
                 "%s; ignoring\n", n, peeraddr);
     }
@@ -368,25 +391,43 @@ int udp_read(int udp,unsigned char nonce[crypto_box_NONCEBYTES],
 
 
 /*
- * Sends n characters from the given buffer to the given address through
- * the UDP socket. Returns 0 on success, or prints an error and returns
- * -1 on failure.
+ * Sends a nonce and len bytes from the given buffer through the UDP
+ * socket. Returns 0 on success, or prints an error and returns -1 on
+ * failure.
  */
 
-int udp_write(int udp, unsigned char nonce[crypto_box_NONCEBYTES],
+int udp_write(int udp, unsigned char nonce[NONCEBYTES],
               unsigned char *buf, int len, const struct sockaddr *addr,
               socklen_t addrlen)
 {
     int n;
+    struct msghdr msg;
+    struct iovec iov[2];
 
-    n = sendto(udp, buf, len, 0, addr, addrlen);
+    iov[0].iov_base = nonce;
+    iov[0].iov_len = NONCEBYTES;
+
+    iov[1].iov_base = buf;
+    iov[1].iov_len = len;
+
+    msg.msg_name = (void *) addr;
+    msg.msg_namelen = addrlen;
+    msg.msg_iov = iov;
+    msg.msg_iovlen = 2;
+    msg.msg_control = NULL;
+    msg.msg_controllen = 0;
+    msg.msg_flags = 0;
+
+    n = sendmsg(udp, &msg, 0);
 
     if (n < 0) {
         if (errno == EMSGSIZE) {
             /*
-             * If this happens, it means the MTU on the TAP interfaces
-             * is larger than the PMTU between the two ends of this
-             * tunnel. We don't try to adjust the outer MTU (yet).
+             * This means that (PMTU discovery is miraculously working
+             * and) the PMTU between the two ends of this tunnel is not
+             * large enough to accommodate the packets we're sending. We
+             * do not reduce the MTU on the TAP interfaces to compensate
+             * for this (yet).
              */
             fprintf(stderr, "PMTU is <%d bytes, reduce TAP MTU; "
                     "dropping packet\n", len);
