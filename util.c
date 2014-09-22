@@ -264,7 +264,11 @@ int tap_read(int tap, unsigned char *buf, int len)
 {
     int n;
 
-    set_blocking(tap, 0);
+    if (set_blocking(tap, 0) < 0) {
+        fprintf(stderr, "Couldn't set TAP device to non-blocking: %s\n",
+                strerror(errno));
+        return -1;
+    }
 
     n = read(tap, buf, len);
 
@@ -296,7 +300,11 @@ int tap_write(int tap, unsigned char *buf, int len)
 {
     int n;
 
-    set_blocking(tap, 1);
+    if (set_blocking(tap, 1) < 0) {
+        fprintf(stderr, "Couldn't set TAP device to blocking: %s\n",
+                strerror(errno));
+        return -1;
+    }
 
     n = write(tap, buf, len);
 
