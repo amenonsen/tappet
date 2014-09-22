@@ -123,19 +123,6 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
     }
 
     /*
-     * We want to do non-blocking reads on the TAP fd to drain the queue
-     * on every read notification, but we'd prefer to do blocking writes
-     * rather than buffering. It's cheap to set and clear O_NONBLOCK, so
-     * that's what we do.
-     *
-     * We don't have to do this for the UDP socket, because we can just
-     * use recvfrom(…, MSG_DONTWAIT) and sendto without MSG_DONTWAIT to
-     * get exactly the semantics we need.
-     */
-
-    set_blocking(tap, 0);
-
-    /*
      * Now both sides loop waiting for readability events on their fds.
      */
 
