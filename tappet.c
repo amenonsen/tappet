@@ -106,11 +106,11 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
     crypto_box_beforenm(k, oursk, theirpk);
 
     /*
-     * The client always knows where to send UDP packets, but the server
-     * has to wait until it receives a valid packet from the client. To
-     * keep the code simple, both sides always sendto() their peer. The
-     * client connect()s on the socket, but the server doesn't (so that
-     * it receives packets from a client whose IP address has changed).
+     * Each side has UDP packets to sendto() its peer: for the client,
+     * it's the server; for the server, it's the result of recvfrom().
+     * The client connect()s on the socket, but the server doesn't (so
+     * that it can receive packets from a client whose IP address has
+     * changed).
      */
 
     peer = (struct sockaddr *) &peeraddr;
