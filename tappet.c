@@ -95,7 +95,7 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
     int maxfd;
     unsigned char buf[65536];
     unsigned char k[crypto_box_BEFORENMBYTES];
-    struct sockaddr_in6 peeraddr;
+    struct sockaddr_storage peeraddr;
     struct sockaddr *peer;
     socklen_t peerlen;
 
