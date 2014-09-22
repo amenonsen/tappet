@@ -1,5 +1,7 @@
 #include "tappet.h"
 
+#include <limits.h>
+
 extern void randombytes(unsigned char *buf, unsigned long long len);
 
 /*
@@ -47,6 +49,40 @@ void generate_nonce(int role, unsigned char nonce[NONCEBYTES])
 
 void increment_nonce(int role, unsigned char nonce[NONCEBYTES])
 {
+    /*
+     * For now, we just increment the twenty-byte counter part of the
+     * nonce by 2, no matter what the role.
+     */
+
+    int inc = 2;
+    int idx = 20;
+    unsigned char *d;
+
+    do {
+        d = nonce + --idx;
+
+        if (*d+inc < 255) {
+            *d += inc;
+            return;
+        }
+
+        inc = 1;
+    }
+    while (idx > 0);
+
+    /*
+     * If we haven't returned by now, then we overflowed the counter,
+     * which would be 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF on the
+     * server, and 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE on the
+     * client. We can't even generate a new nonce, because it won't be
+     * larger than the old one (since the randomness is in the least
+     * significant portion of the twenty-four bytes).
+     *
+     * OH NO! THERE'S NOTHING WE CAN DO!
+     */
+
+    fprintf(stderr, "Goodbye, cruel world.\n");
+    exit(-INT_MAX);
 }
 
 
