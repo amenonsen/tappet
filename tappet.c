@@ -95,15 +95,18 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
     int maxfd;
     unsigned char ptbuf[2048];
     unsigned char ctbuf[2048];
+    unsigned char n[crypto_box_NONCEBYTES];
     unsigned char k[crypto_box_BEFORENMBYTES];
     struct sockaddr_storage peeraddr;
     struct sockaddr *peer;
     socklen_t peerlen;
 
     /*
-     * Precompute a shared secret from the two keys.
+     * Generate a nonce based on our role, and precompute a shared
+     * secret from the two keys.
      */
 
+    generate_nonce(role, n);
     crypto_box_beforenm(k, oursk, theirpk);
 
     /*

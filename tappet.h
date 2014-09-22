@@ -34,6 +34,7 @@ int udp_read(int udp, unsigned char *buf, int len,
 int udp_write(int udp, unsigned char *buf, int len,
               const struct sockaddr *addr, socklen_t addrlen);
 
+void generate_nonce(int role, unsigned char *buf);
 int decrypt(unsigned char *ctbuf, int ctlen,
             unsigned char *ptbuf, int ptlen);
 int encrypt(unsigned char *ptbuf, int ptlen,
