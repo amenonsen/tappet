@@ -14,6 +14,19 @@ running on another host. Each instance must have its own secret key and
 the public key of the other side; and both sides must be given the same
 address and port (one side asks, the other accepts).
 
+No attempt is made to obscure the size and timing of packets being sent
+over the wire. Ethernet frames are encrypted as they are received, and
+immediately forwarded to the other side. Encryption is deterministic,
+with a shared secret derived from one side's secret key and the other
+side's public key. There is no renegotiation of keys. In fact, there
+is no negotiation at all.
+
+See http://cr.yp.to/highspeed/naclcrypto-20090310.pdf for details about
+the encryption. This program includes a copy of TweetNaCl, which is in
+the public domain.
+
+» Usage
+
 First, configure TAP interfaces on both hosts as root:
 
     # ip tuntap add tappet0 mode tap user tappet
