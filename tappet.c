@@ -95,9 +95,9 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
     int maxfd;
     unsigned char buf[65536];
     unsigned char k[crypto_box_BEFORENMBYTES];
-    struct sockaddr_in6 pin6;
-    struct sockaddr *client;
-    socklen_t clientlen;
+    struct sockaddr_in6 peeraddr;
+    struct sockaddr *peer;
+    socklen_t peerlen;
 
     /*
      * Precompute a shared secret from the two keys.
@@ -108,14 +108,18 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
     /*
      * The client always knows where to send UDP packets, but the server
      * has to wait until it receives a valid packet from the client. To
-     * keep the code simple, both sides always use sendto(). The client
-     * does connect on the socket, but the server doesn't (so that it
-     * can accept packets from a client whose IP address has changed).
-     * Here we set up a sockaddr_in{,6} for the client address.
+     * keep the code simple, both sides always sendto() their peer. The
+     * client connect()s on the socket, but the server doesn't (so that
+     * it receives packets from a client whose IP address has changed).
      */
 
-    client = (struct sockaddr *) &pin6;
-    clientlen = sizeof(pin6);
+    peer = (struct sockaddr *) &peeraddr;
+    peerlen = sizeof(peeraddr);
+
+    if (role == 0) {
+        memcpy(peer, server, srvlen);
+        peerlen = srvlen;
+    }
 
     /*
      * We want to do non-blocking reads on the TAP fd to drain the queue
@@ -144,11 +148,11 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
         FD_SET(udp, &r);
 
         /*
-         * The server doesn't listen for TAP packets until it knows its
-         * client's address. The client always listens.
+         * Don't listen for TAP packets until we know where to send them
+         * (which the client always does).
          */
 
-        if (role == 0 || client->sa_family != 0)
+        if (peer->sa_family != 0)
             FD_SET(tap, &r);
 
         err = select(maxfd+1, &r, NULL, NULL, NULL);
@@ -156,17 +160,15 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
             return err;
 
         /*
-         * We read a complete packet from the UDP socket (or die if our
-         * ridiculously large buffer is still not enough to prevent the
-         * packet from being truncated) and try to decrypt it. If that
-         * fails, we discard the packet silently. Otherwise we write
-         * the decrypted result to the TAP fd in one go.
+         * We read a complete packet from the UDP socket and try to
+         * decrypt it. If that fails, we discard the packet silently.
+         * Otherwise we write the decrypted result to the TAP fd.
          */
 
         if (FD_ISSET(udp, &r)) {
             while (1) {
                 n = recvfrom(udp, (void *) buf, 65536, MSG_DONTWAIT|MSG_TRUNC,
-                             client, &clientlen);
+                             peer, &peerlen);
 
                 /*
                  * Either there's nothing to read, or something broke.
@@ -188,17 +190,17 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
                  */
 
                 if (n == 0 || n > 65536) {
-                    char clientaddr[256];
+                    char peeraddr[256];
 
-                    describe_sockaddr(client, clientaddr, 256);
+                    describe_sockaddr(peer, peeraddr, 256);
 
                     if (n == 0) {
-                        fprintf(stderr, "Orderly shutdown from client %s; ignoring\n",
-                                clientaddr);
+                        fprintf(stderr, "Orderly shutdown from %s; ignoring\n",
+                                peeraddr);
                     }
                     else {
                         fprintf(stderr, "Received oversize (%d bytes) packet from "
-                                "client %s; ignoring\n", n, clientaddr);
+                                "%s; ignoring\n", n, peeraddr);
                     }
 
                     continue;
@@ -217,14 +219,11 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
         /*
          * We read ethernet frames from the TAP device in much the same
          * way as above, except that we use read and sendto instead of
-         * recfrom and write.
+         * recvfrom and write.
          */
 
         if (FD_ISSET(tap, &r)) {
             while (1) {
-                const struct sockaddr *target;
-                socklen_t tlen;
-
                 n = read(tap, buf, 65536);
 
                 if (n < 0) {
@@ -237,16 +236,7 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
                     return -1;
                 }
 
-                if (role == 0) {
-                    target = server;
-                    tlen = srvlen;
-                }
-                else {
-                    target = client;
-                    tlen = clientlen;
-                }
-
-                err = sendto(udp, buf, n, 0, target, tlen);
+                err = sendto(udp, buf, n, 0, peer, peerlen);
                 if (err < 0) {
                     fprintf(stderr, "Error writing to UDP: %s\n", strerror(errno));
                     return -1;
