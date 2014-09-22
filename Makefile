@@ -1,6 +1,6 @@
 CFLAGS = -Wall $(OPTIM) -D_POSIX_SOURCE -std=c99 -pedantic
 
-SOURCES = util.c tweetnacl.c devurandom.c
+SOURCES = crypt.c util.c tweetnacl.c devurandom.c
 
 all: tappet tappet-keygen
 

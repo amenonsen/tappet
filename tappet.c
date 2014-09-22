@@ -93,7 +93,8 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
            unsigned char theirpk[KEYBYTES])
 {
     int maxfd;
-    unsigned char buf[2048];
+    unsigned char ptbuf[2048];
+    unsigned char ctbuf[2048];
     unsigned char k[crypto_box_BEFORENMBYTES];
     struct sockaddr_storage peeraddr;
     struct sockaddr *peer;
@@ -150,43 +151,57 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
         }
 
         /*
-         * We read a complete packet from the UDP socket and try to
-         * decrypt it. If that fails, we discard the packet silently.
-         * Otherwise we write the decrypted result to the TAP fd.
+         * We read a packet from the UDP socket and try to decrypt it.
+         * If that fails, we discard the packet silently. Otherwise we
+         * write the decrypted result to the TAP device.
          */
 
         if (FD_ISSET(udp, &r)) {
             while (1) {
-                n = udp_read(udp, buf, sizeof(buf), peer, &peerlen);
+                n = udp_read(udp, ctbuf, sizeof(ctbuf), peer, &peerlen);
+                if (n > 0)
+                    n = decrypt(ctbuf, n, ptbuf, sizeof(ptbuf));
 
-                if (n < -1)
-                    return n;
-                if (n == -1)
-                    continue;
+                /*
+                 * If anything goes wrong on the server, we forget the
+                 * peer so that we don't try to send any packets to it.
+                 */
+
+                if (role == 1 && n < 0)
+                    memset(&peeraddr, 0, sizeof(peeraddr));
+
                 if (n == 0)
                     break;
 
-                if (tap_write(tap, buf, n) < 0)
+                if (n == -1)
+                    continue;
+
+                if (n < 0)
+                    return n;
+
+                if (tap_write(tap, ptbuf, n) < 0)
                     return -1;
             }
         }
 
         /*
-         * We read ethernet frames from the TAP device in much the same
-         * way as above, except that we use read and sendto instead of
-         * recvfrom and write.
+         * Similarly, we read ethernet frames from the TAP device and
+         * write them to the UDP socket after encryption.
          */
 
         if (FD_ISSET(tap, &r)) {
             while (1) {
-                n = tap_read(tap, buf, sizeof(buf));
+                n = tap_read(tap, ptbuf, sizeof(ptbuf));
+                if (n > 0)
+                    n = encrypt(ptbuf, n, ctbuf, sizeof(ctbuf));
 
-                if (n < 0)
-                    return n;
                 if (n == 0)
                     break;
 
-                if (udp_write(udp, buf, n, peer, peerlen) < 0)
+                if (n < 0)
+                    return n;
+
+                if (udp_write(udp, ctbuf, n, peer, peerlen) < 0)
                     return -1;
             }
         }
