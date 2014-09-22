@@ -293,15 +293,18 @@ int tap_read(int tap, unsigned char *buf, int len)
 
 int tap_write(int tap, unsigned char *buf, int len)
 {
+    unsigned char *p = buf;
+
     set_blocking(tap, 1);
 
     while (len > 0) {
-        int n = write(tap, buf, len);
+        int n = write(tap, p, len);
         if (n <= 0) {
             fprintf(stderr, "Error writing to TAP: %s\n", strerror(errno));
             return -1;
         }
         len -= n;
+        p += n;
     }
 
     return 0;
