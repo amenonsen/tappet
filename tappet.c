@@ -115,6 +115,7 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
 
     peer = (struct sockaddr *) &peeraddr;
     peerlen = sizeof(peeraddr);
+    memset(peer, 0, peerlen);
 
     if (role == 0) {
         memcpy(peer, server, srvlen);
