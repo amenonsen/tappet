@@ -250,3 +250,25 @@ void describe_sockaddr(const struct sockaddr *addr, char *desc, int desclen)
         strcpy(desc, "[unknown]");
     }
 }
+
+
+/*
+ * Writes n characters from the given buffer to the TAP fd, which is set
+ * to block before the write and set back to non-blocking afterwards.
+ * Returns 0 on success, or prints an error and returns -1 on failure.
+ */
+
+int tap_write(int tap, unsigned char *buf, int n)
+{
+    set_blocking(tap, 1);
+    while (n > 0) {
+        int written = write(tap, buf, n);
+        if (written <= 0) {
+            fprintf(stderr, "Error writing to TAP: %s\n", strerror(errno));
+            return -1;
+        }
+        n -= written;
+    }
+    set_blocking(tap, 0);
+    return 0;
+}
