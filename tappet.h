@@ -27,7 +27,6 @@ int get_sockaddr(const char *address, const char *sport,
 int udp_socket(int role, const struct sockaddr *server,
                socklen_t srvlen);
 void describe_sockaddr(const struct sockaddr *addr, char *desc, int desclen);
-int set_blocking(int fd, int blocking);
 int tap_read(int tap, unsigned char *buf, int len);
 int tap_write(int tap, unsigned char *buf, int len);
 int udp_read(int udp, unsigned char *buf, int len,
