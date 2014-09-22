@@ -208,7 +208,7 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
                 n = tap_read(tap, ptbuf+ZEROBYTES, sizeof(ptbuf)-ZEROBYTES);
                 if (n > 0) {
                     increment_nonce(role, ournonce);
-                    n = encrypt(k, ournonce, ptbuf, n, ctbuf);
+                    n = encrypt(k, ournonce, ptbuf, n+ZEROBYTES, ctbuf);
                 }
 
                 if (n == 0)
