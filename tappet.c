@@ -250,8 +250,6 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
                     tlen = srvlen;
                 }
                 else {
-                    if (client->sa_family == 0)
-                        continue;
                     target = client;
                     tlen = clientlen;
                 }
