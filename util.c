@@ -354,6 +354,8 @@ int udp_read(int udp,unsigned char nonce[NONCEBYTES],
 
     n = recvmsg(udp, &msg, MSG_DONTWAIT|MSG_TRUNC);
 
+    *addrlen = msg.msg_namelen;
+
     if (n > NONCEBYTES && !(msg.msg_flags & MSG_TRUNC))
         return n-NONCEBYTES;
 
