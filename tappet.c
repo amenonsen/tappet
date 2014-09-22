@@ -93,7 +93,7 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
            unsigned char theirpk[KEYBYTES])
 {
     int maxfd;
-    unsigned char buf[65536];
+    unsigned char buf[2048];
     unsigned char k[crypto_box_BEFORENMBYTES];
     struct sockaddr_storage peeraddr;
     struct sockaddr *peer;
@@ -155,7 +155,7 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
 
         if (FD_ISSET(udp, &r)) {
             while (1) {
-                n = udp_read(udp, buf, 65536, peer, &peerlen);
+                n = udp_read(udp, buf, sizeof(buf), peer, &peerlen);
 
                 if (n < -1)
                     return n;
@@ -177,7 +177,7 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
 
         if (FD_ISSET(tap, &r)) {
             while (1) {
-                n = tap_read(tap, buf, 65536);
+                n = tap_read(tap, buf, sizeof(buf));
 
                 if (n < 0)
                     return n;
