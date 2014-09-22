@@ -3,8 +3,9 @@ tappet
 
 ***WARNING***
 
-The cryptography code is still not complete. Everything about encryption
-in the rest of this document is untrue.
+This code has not been audited. Everything about encryption and security
+in the rest of this document may be untrue. Read the code and draw your
+own conclusions.
 
 ***WARNING***
 
