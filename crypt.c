@@ -95,12 +95,11 @@ void increment_nonce(int role, unsigned char nonce[NONCEBYTES])
 int decrypt(unsigned char k[crypto_box_BEFORENMBYTES],
             unsigned char nonce[NONCEBYTES],
             unsigned char *ctbuf, int ctlen,
-            unsigned char *ptbuf, int ptlen)
+            unsigned char *ptbuf)
 {
-    if (ctlen > ptlen)
+    if (crypto_box_open_afternm(ptbuf, ctbuf, ctlen, nonce, k) < 0)
         return -1;
 
-    memcpy(ptbuf, ctbuf, ctlen);
     return ctlen;
 }
 
@@ -114,11 +113,10 @@ int decrypt(unsigned char k[crypto_box_BEFORENMBYTES],
 int encrypt(unsigned char k[crypto_box_BEFORENMBYTES],
             unsigned char nonce[NONCEBYTES],
             unsigned char *ptbuf, int ptlen,
-            unsigned char *ctbuf, int ctlen)
+            unsigned char *ctbuf)
 {
-    if (ptlen > ctlen)
+    if (crypto_box_afternm(ctbuf, ptbuf, ptlen, nonce, k) < 0)
         return -1;
 
-    memcpy(ctbuf, ptbuf, ptlen);
     return ptlen;
 }

@@ -24,6 +24,7 @@ _Static_assert(crypto_box_SECRETKEYBYTES == crypto_box_PUBLICKEYBYTES,
                "SECRETKEYBYTES != PUBLICKEYBYTES");
 
 #define KEYBYTES crypto_box_SECRETKEYBYTES
+#define ZEROBYTES crypto_box_ZEROBYTES
 #define NONCEBYTES crypto_box_NONCEBYTES
 
 int tap_attach(const char *name);
@@ -47,10 +48,10 @@ void increment_nonce(int role, unsigned char nonce[NONCEBYTES]);
 int decrypt(unsigned char k[crypto_box_BEFORENMBYTES],
             unsigned char nonce[NONCEBYTES],
             unsigned char *ctbuf, int ctlen,
-            unsigned char *ptbuf, int ptlen);
+            unsigned char *ptbuf);
 int encrypt(unsigned char k[crypto_box_BEFORENMBYTES],
             unsigned char nonce[NONCEBYTES],
             unsigned char *ptbuf, int ptlen,
-            unsigned char *ctbuf, int ctlen);
+            unsigned char *ctbuf);
 
 #endif

@@ -102,11 +102,12 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
     socklen_t peerlen;
 
     /*
-     * Generate a nonce based on our role, and precompute a shared
-     * secret from the two keys.
+     * Generate a nonce based on our role, zero bytes that should be
+     * zero, and precompute a shared secret from the two keys.
      */
 
     generate_nonce(role, ournonce);
+    memset(ptbuf, 0, ZEROBYTES);
     memset(theirnonce, 0, sizeof(theirnonce));
     crypto_box_beforenm(k, theirpk, oursk);
 
@@ -171,7 +172,7 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
                 if (n > 0 && memcmp(lastnonce, theirnonce, NONCEBYTES) >= 0)
                     n = -1;
                 if (n > 0)
-                    n = decrypt(k, theirnonce, ctbuf, n, ptbuf, sizeof(ptbuf));
+                    n = decrypt(k, theirnonce, ctbuf, n, ptbuf);
 
                 /*
                  * If anything goes wrong on the server, we forget the
@@ -192,7 +193,7 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
                 if (n < 0)
                     return n;
 
-                if (tap_write(tap, ptbuf, n) < 0)
+                if (tap_write(tap, ptbuf+ZEROBYTES, n-ZEROBYTES) < 0)
                     return -1;
             }
         }
@@ -204,10 +205,10 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
 
         if (FD_ISSET(tap, &r)) {
             while (1) {
-                n = tap_read(tap, ptbuf, sizeof(ptbuf));
+                n = tap_read(tap, ptbuf+ZEROBYTES, sizeof(ptbuf)-ZEROBYTES);
                 if (n > 0) {
                     increment_nonce(role, ournonce);
-                    n = encrypt(k, ournonce, ptbuf, n, ctbuf, sizeof(ctbuf));
+                    n = encrypt(k, ournonce, ptbuf, n, ctbuf);
                 }
 
                 if (n == 0)
