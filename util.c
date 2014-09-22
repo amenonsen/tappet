@@ -294,18 +294,15 @@ int tap_read(int tap, unsigned char *buf, int len)
 
 int tap_write(int tap, unsigned char *buf, int len)
 {
-    unsigned char *p = buf;
+    int n;
 
     set_blocking(tap, 1);
 
-    while (len > 0) {
-        int n = write(tap, p, len);
-        if (n <= 0) {
-            fprintf(stderr, "Error writing to TAP: %s\n", strerror(errno));
-            return -1;
-        }
-        len -= n;
-        p += n;
+    n = write(tap, buf, len);
+
+    if (n < 0) {
+        fprintf(stderr, "Error writing to TAP: %s\n", strerror(errno));
+        return -1;
     }
 
     return 0;
@@ -363,47 +360,31 @@ int udp_read(int udp, unsigned char *buf, int len,
 
 /*
  * Sends n characters from the given buffer to the given address through
- * the UDP socket. Retries with smaller n if the packet is too large.
- * Returns 0 on success, or prints an error and returns -1 on failure.
+ * the UDP socket. Returns 0 on success, or prints an error and returns
+ * -1 on failure.
  */
 
 int udp_write(int udp, unsigned char *buf, int len,
               const struct sockaddr *addr, socklen_t addrlen)
 {
-    int sent = 0;
-    int msglen = len;
-    unsigned char *p = buf;
+    int n;
 
-    /*
-     * Unlike tap_write above, we should not get short writes on this
-     * datagram socket. Either the packet will be sent in its entirety
-     * (we're writing in blocking mode), or we should get EMSGSIZE. In
-     * most cases, we should be done after the first sendto.
-     */
+    n = sendto(udp, buf, len, 0, addr, addrlen);
 
-    while (sent < len) {
-        int n = sendto(udp, p, msglen, 0, addr, addrlen);
-
-        if (n < 0 && errno != EMSGSIZE) {
-            fprintf(stderr, "Error writing to UDP socket: %s\n",
-                    strerror(errno));
-            return -1;
+    if (n < 0) {
+        if (errno == EMSGSIZE) {
+            /*
+             * If this happens, it means the MTU on the TAP interfaces
+             * is larger than the PMTU between the two ends of this
+             * tunnel. We don't try to adjust the outer MTU (yet).
+             */
+            fprintf(stderr, "PMTU is <%d bytes, reduce TAP MTU; "
+                    "dropping packet\n", len);
+            return 0;
         }
-
-        if (n < 0) {
-            msglen /= 2;
-            if (msglen == 0) {
-                fprintf(stderr, "Error writing to UDP socket: %s\n",
-                        strerror(errno));
-                return -1;
-            }
-        }
-        else {
-            p += n;
-            if (p+msglen > buf+len)
-                msglen = buf+len - p;
-            sent += n;
-        }
+        fprintf(stderr, "Error writing to UDP socket: %s\n",
+                strerror(errno));
+        return -1;
     }
 
     return 0;
