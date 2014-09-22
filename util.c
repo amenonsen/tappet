@@ -52,7 +52,7 @@ int decode_hex(char *s, char *t)
     if (a >= '0' && a <= '9')
         a -= '0';
     else if (a >= 'a' && a <= 'f')
-        a -= 'a';
+        a = a - 'a' + 10;
     else
         return -1;
 
@@ -60,7 +60,7 @@ int decode_hex(char *s, char *t)
     if (b >= '0' && b <= '9')
         b -= '0';
     else if (b >= 'a' && b <= 'f')
-        b -= 'a';
+        b = b - 'a' + 10;
     else
         return -1;
 
