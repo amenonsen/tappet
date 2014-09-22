@@ -229,6 +229,10 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
                 if (n < 0) {
                     if (errno == EAGAIN || errno == EWOULDBLOCK)
                         break;
+
+                    fprintf(stderr, "Error reading from TAP device: %s\n",
+                            strerror(errno));
+                    return n;
                 }
 
                 if (n == 0) {
