@@ -144,8 +144,10 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
             FD_SET(tap, &r);
 
         err = select(maxfd+1, &r, NULL, NULL, NULL);
-        if (err < 0)
+        if (err < 0) {
+            fprintf(stderr, "select() failed: %s\n", strerror(errno));
             return err;
+        }
 
         /*
          * We read a complete packet from the UDP socket and try to
