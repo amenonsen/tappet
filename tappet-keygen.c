@@ -40,7 +40,7 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    crypto_box_keypair(sk, pk);
+    crypto_box_keypair(pk, sk);
 
     for(i = 0; i < 32; i++)
         fprintf(key, "%02x", sk[i]);

@@ -108,7 +108,7 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
 
     generate_nonce(role, ournonce);
     memset(theirnonce, 0, sizeof(theirnonce));
-    crypto_box_beforenm(k, oursk, theirpk);
+    crypto_box_beforenm(k, theirpk, oursk);
 
     /*
      * Each side has UDP packets to sendto() its peer: for the client,
