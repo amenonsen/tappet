@@ -20,7 +20,10 @@
 
 #include "tweetnacl.h"
 
-#define KEYBYTES 32
+_Static_assert(crypto_box_SECRETKEYBYTES == crypto_box_PUBLICKEYBYTES,
+               "SECRETKEYBYTES != PUBLICKEYBYTES");
+
+#define KEYBYTES crypto_box_SECRETKEYBYTES
 #define NONCEBYTES crypto_box_NONCEBYTES
 
 int tap_attach(const char *name);
