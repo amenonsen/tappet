@@ -1,7 +1,6 @@
 #include "tappet.h"
 
-static struct sockaddr_in in_addr;
-static struct sockaddr_in6 in6_addr;
+static struct sockaddr_storage sock_addr;
 
 /*
  * Attaches to the TAP interface with the given name and returns an fd
@@ -135,6 +134,8 @@ int get_sockaddr(const char *address, const char *sport,
 {
     int n;
     long int port;
+    struct sockaddr_in *in_addr = (struct sockaddr_in *) &sock_addr;
+    struct sockaddr_in6 *in6_addr = (struct sockaddr_in6 *) &sock_addr;
 
     errno = 0;
     port = strtol(sport, NULL, 10);
@@ -143,21 +144,21 @@ int get_sockaddr(const char *address, const char *sport,
         return -1;
     }
 
-    n = inet_pton(AF_INET6, address, (void *) &in6_addr.sin6_addr);
+    n = inet_pton(AF_INET6, address, (void *) &in6_addr->sin6_addr);
     if (n == 1) {
-        in6_addr.sin6_family = AF_INET6;
-        in6_addr.sin6_port = htons((short) port);
-        *addr = (struct sockaddr *) &in6_addr;
-        *addrlen = sizeof(in6_addr);
+        in6_addr->sin6_family = AF_INET6;
+        in6_addr->sin6_port = htons((short) port);
+        *addr = (struct sockaddr *) in6_addr;
+        *addrlen = sizeof(*in6_addr);
         return 0;
     }
 
-    n = inet_pton(AF_INET, address, (void *) &in_addr.sin_addr);
+    n = inet_pton(AF_INET, address, (void *) &in_addr->sin_addr);
     if (n == 1) {
-        in_addr.sin_family = AF_INET;
-        in_addr.sin_port = htons((short) port);
-        *addr = (struct sockaddr *) &in_addr;
-        *addrlen = sizeof(in_addr);
+        in_addr->sin_family = AF_INET;
+        in_addr->sin_port = htons((short) port);
+        *addr = (struct sockaddr *) in_addr;
+        *addrlen = sizeof(*in_addr);
         return 0;
     }
 
