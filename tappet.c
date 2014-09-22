@@ -95,8 +95,7 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
     int maxfd;
     unsigned char buf[65536];
     unsigned char k[crypto_box_BEFORENMBYTES];
-    struct sockaddr_in pin_addr;
-    struct sockaddr_in pin6_addr;
+    struct sockaddr_in6 pin6;
     struct sockaddr *client;
     socklen_t clientlen;
 
@@ -115,16 +114,8 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
      * Here we set up a sockaddr_in{,6} for the client address.
      */
 
-    if (server->sa_family == AF_INET6) {
-        memset(&pin6_addr, 0, sizeof(pin6_addr));
-        client = (struct sockaddr *) &pin6_addr;
-        clientlen = sizeof(pin6_addr);
-    }
-    else {
-        memset(&pin_addr, 0, sizeof(pin_addr));
-        client = (struct sockaddr *) &pin_addr;
-        clientlen = sizeof(pin_addr);
-    }
+    client = (struct sockaddr *) &pin6;
+    clientlen = sizeof(pin6);
 
     /*
      * We want to do non-blocking reads on the TAP fd to drain the queue
