@@ -324,8 +324,9 @@ int tap_write(int tap, unsigned char *buf, int len)
  * can be ignored), or prints an error and returns -2 on failure.
  */
 
-int udp_read(int udp, unsigned char *buf, int len,
-             struct sockaddr *addr, socklen_t *addrlen)
+int udp_read(int udp,unsigned char nonce[crypto_box_NONCEBYTES],
+             unsigned char *buf, int len, struct sockaddr *addr,
+             socklen_t *addrlen)
 {
     int n;
     char peeraddr[256];
@@ -372,8 +373,9 @@ int udp_read(int udp, unsigned char *buf, int len,
  * -1 on failure.
  */
 
-int udp_write(int udp, unsigned char *buf, int len,
-              const struct sockaddr *addr, socklen_t addrlen)
+int udp_write(int udp, unsigned char nonce[crypto_box_NONCEBYTES],
+              unsigned char *buf, int len, const struct sockaddr *addr,
+              socklen_t addrlen)
 {
     int n;
 

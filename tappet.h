@@ -18,6 +18,8 @@
 #include <linux/if_tun.h>
 #include <netinet/in.h>
 
+#include "tweetnacl.h"
+
 #define KEYBYTES 32
 
 int tap_attach(const char *name);
@@ -29,15 +31,22 @@ int udp_socket(int role, const struct sockaddr *server,
 void describe_sockaddr(const struct sockaddr *addr, char *desc, int desclen);
 int tap_read(int tap, unsigned char *buf, int len);
 int tap_write(int tap, unsigned char *buf, int len);
-int udp_read(int udp, unsigned char *buf, int len,
-             struct sockaddr *addr, socklen_t *addrlen);
-int udp_write(int udp, unsigned char *buf, int len,
-              const struct sockaddr *addr, socklen_t addrlen);
+int udp_read(int udp, unsigned char nonce[crypto_box_NONCEBYTES],
+             unsigned char *buf, int len, struct sockaddr *addr,
+             socklen_t *addrlen);
+int udp_write(int udp, unsigned char nonce[crypto_box_NONCEBYTES],
+              unsigned char *buf, int len, const struct sockaddr *addr,
+              socklen_t addrlen);
 
-void generate_nonce(int role, unsigned char *buf);
-int decrypt(unsigned char *ctbuf, int ctlen,
+void generate_nonce(int role, unsigned char nonce[crypto_box_NONCEBYTES]);
+void increment_nonce(int role, unsigned char nonce[crypto_box_NONCEBYTES]);
+int decrypt(unsigned char k[crypto_box_BEFORENMBYTES],
+            unsigned char nonce[crypto_box_NONCEBYTES],
+            unsigned char *ctbuf, int ctlen,
             unsigned char *ptbuf, int ptlen);
-int encrypt(unsigned char *ptbuf, int ptlen,
+int encrypt(unsigned char k[crypto_box_BEFORENMBYTES],
+            unsigned char nonce[crypto_box_NONCEBYTES],
+            unsigned char *ptbuf, int ptlen,
             unsigned char *ctbuf, int ctlen);
 
 #endif

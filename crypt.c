@@ -1,14 +1,12 @@
 #include "tappet.h"
-#include "tweetnacl.h"
 
 extern void randombytes(unsigned char *buf, unsigned long long len);
 
 /*
- * Generates a nonce based on our role and stores it in buf, which is
- * assumed to point to crypto_box_NONCEBYTES of usable storage.
+ * Generates a nonce based on our role into the given buffer.
  */
 
-void generate_nonce(int role, unsigned char *buf)
+void generate_nonce(int role, unsigned char nonce[crypto_box_NONCEBYTES])
 {
     int i;
 
@@ -37,9 +35,18 @@ void generate_nonce(int role, unsigned char *buf)
 
     i = 0;
     while (i < crypto_box_NONCEBYTES-4-1)
-        buf[i++] = 0;
-    buf[i++] = role;
-    randombytes(buf+i, 4);
+        nonce[i++] = 0;
+    nonce[i++] = role;
+    randombytes(nonce+i, 4);
+}
+
+
+/*
+ * Increments the given nonce as appropriate for the role.
+ */
+
+void increment_nonce(int role, unsigned char nonce[crypto_box_NONCEBYTES])
+{
 }
 
 
@@ -49,7 +56,9 @@ void generate_nonce(int role, unsigned char *buf)
  * failure.
  */
 
-int decrypt(unsigned char *ctbuf, int ctlen,
+int decrypt(unsigned char k[crypto_box_BEFORENMBYTES],
+            unsigned char nonce[crypto_box_NONCEBYTES],
+            unsigned char *ctbuf, int ctlen,
             unsigned char *ptbuf, int ptlen)
 {
     if (ctlen > ptlen)
@@ -66,7 +75,9 @@ int decrypt(unsigned char *ctbuf, int ctlen,
  * failure.
  */
 
-int encrypt(unsigned char *ptbuf, int ptlen,
+int encrypt(unsigned char k[crypto_box_BEFORENMBYTES],
+            unsigned char nonce[crypto_box_NONCEBYTES],
+            unsigned char *ptbuf, int ptlen,
             unsigned char *ctbuf, int ctlen)
 {
     if (ptlen > ctlen)

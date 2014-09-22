@@ -4,7 +4,6 @@
  */
 
 #include "tappet.h"
-#include "tweetnacl.h"
 
 int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
            int tap, int udp, unsigned char oursk[KEYBYTES],
@@ -95,7 +94,8 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
     int maxfd;
     unsigned char ptbuf[2048];
     unsigned char ctbuf[2048];
-    unsigned char n[crypto_box_NONCEBYTES];
+    unsigned char ournonce[crypto_box_NONCEBYTES];
+    unsigned char theirnonce[crypto_box_NONCEBYTES];
     unsigned char k[crypto_box_BEFORENMBYTES];
     struct sockaddr_storage peeraddr;
     struct sockaddr *peer;
@@ -106,7 +106,8 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
      * secret from the two keys.
      */
 
-    generate_nonce(role, n);
+    generate_nonce(role, ournonce);
+    memset(theirnonce, 0, sizeof(theirnonce));
     crypto_box_beforenm(k, oursk, theirpk);
 
     /*
@@ -161,17 +162,26 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
 
         if (FD_ISSET(udp, &r)) {
             while (1) {
-                n = udp_read(udp, ctbuf, sizeof(ctbuf), peer, &peerlen);
+                unsigned char lastnonce[crypto_box_NONCEBYTES];
+
+                memcpy(lastnonce, theirnonce, sizeof(theirnonce));
+
+                n = udp_read(udp, theirnonce, ctbuf, sizeof(ctbuf), peer, &peerlen);
+
+                if (n > 0 && memcmp(lastnonce, theirnonce, crypto_box_NONCEBYTES) >= 0)
+                    n = -1;
                 if (n > 0)
-                    n = decrypt(ctbuf, n, ptbuf, sizeof(ptbuf));
+                    n = decrypt(k, theirnonce, ctbuf, n, ptbuf, sizeof(ptbuf));
 
                 /*
                  * If anything goes wrong on the server, we forget the
                  * peer so that we don't try to send any packets to it.
                  */
 
-                if (role == 1 && n < 0)
+                if (role == 1 && n < 0) {
                     memset(&peeraddr, 0, sizeof(peeraddr));
+                    memset(theirnonce, 0, sizeof(theirnonce));
+                }
 
                 if (n == 0)
                     break;
@@ -195,8 +205,10 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
         if (FD_ISSET(tap, &r)) {
             while (1) {
                 n = tap_read(tap, ptbuf, sizeof(ptbuf));
-                if (n > 0)
-                    n = encrypt(ptbuf, n, ctbuf, sizeof(ctbuf));
+                if (n > 0) {
+                    increment_nonce(role, ournonce);
+                    n = encrypt(k, ournonce, ptbuf, n, ctbuf, sizeof(ctbuf));
+                }
 
                 if (n == 0)
                     break;
@@ -204,7 +216,7 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
                 if (n < 0)
                     return n;
 
-                if (udp_write(udp, ctbuf, n, peer, peerlen) < 0)
+                if (udp_write(udp, ournonce, ctbuf, n, peer, peerlen) < 0)
                     return -1;
             }
         }
