@@ -168,49 +168,14 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
 
         if (FD_ISSET(udp, &r)) {
             while (1) {
-                n = recvfrom(udp, (void *) buf, 65536, MSG_DONTWAIT|MSG_TRUNC,
-                             peer, &peerlen);
+                n = udp_read(udp, buf, 65536, peer, &peerlen);
 
-                /*
-                 * Either there's nothing to read, or something broke.
-                 */
-
-                if (n < 0) {
-                    if (errno == EAGAIN || errno == EWOULDBLOCK)
-                        break;
-
-                    fprintf(stderr, "Error reading from UDP socket: %s\n",
-                            strerror(errno));
+                if (n < -1)
                     return n;
-                }
-
-                /*
-                 * We complain at length about the "connection" closing
-                 * or receiving oversized packets, but we ultimately
-                 * ignore them and carry on.
-                 */
-
-                if (n == 0 || n > 65536) {
-                    char peeraddr[256];
-
-                    describe_sockaddr(peer, peeraddr, 256);
-
-                    if (n == 0) {
-                        fprintf(stderr, "Orderly shutdown from %s; ignoring\n",
-                                peeraddr);
-                    }
-                    else {
-                        fprintf(stderr, "Received oversize (%d bytes) packet from "
-                                "%s; ignoring\n", n, peeraddr);
-                    }
-
+                if (n == -1)
                     continue;
-                }
-
-                /*
-                 * We have a complete packet. Write it to the TAP device
-                 * (without any decryption yet).
-                 */
+                if (n == 0)
+                    break;
 
                 if (tap_write(tap, buf, n) < 0)
                     return -1;
@@ -225,21 +190,12 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
 
         if (FD_ISSET(tap, &r)) {
             while (1) {
-                n = read(tap, buf, 65536);
+                n = tap_read(tap, buf, 65536);
 
-                if (n < 0) {
-                    if (errno == EAGAIN || errno == EWOULDBLOCK)
-                        break;
-
-                    fprintf(stderr, "Error reading from TAP device: %s\n",
-                            strerror(errno));
+                if (n < 0)
                     return n;
-                }
-
-                if (n == 0) {
-                    fprintf(stderr, "TAP fd closed; exiting\n");
-                    return -1;
-                }
+                if (n == 0)
+                    break;
 
                 if (udp_write(udp, buf, n, peer, peerlen) < 0)
                     return -1;

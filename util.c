@@ -130,8 +130,8 @@ int read_key(const char *name, unsigned char key[KEYBYTES])
  * 0, or else returns -1 on failure.
  */
 
-int get_sockaddr(const char *address, const char *sport, struct sockaddr **addr,
-                 socklen_t *len)
+int get_sockaddr(const char *address, const char *sport,
+                 struct sockaddr **addr, socklen_t *addrlen)
 {
     int n;
     long int port;
@@ -148,7 +148,7 @@ int get_sockaddr(const char *address, const char *sport, struct sockaddr **addr,
         in6_addr.sin6_family = AF_INET6;
         in6_addr.sin6_port = htons((short) port);
         *addr = (struct sockaddr *) &in6_addr;
-        *len = sizeof(in6_addr);
+        *addrlen = sizeof(in6_addr);
         return 0;
     }
 
@@ -157,7 +157,7 @@ int get_sockaddr(const char *address, const char *sport, struct sockaddr **addr,
         in_addr.sin_family = AF_INET;
         in_addr.sin_port = htons((short) port);
         *addr = (struct sockaddr *) &in_addr;
-        *len = sizeof(in_addr);
+        *addrlen = sizeof(in_addr);
         return 0;
     }
 
@@ -173,7 +173,7 @@ int get_sockaddr(const char *address, const char *sport, struct sockaddr **addr,
  * Returns the socket on success, or -1 on failure.
  */
 
-int udp_socket(int role, const struct sockaddr *server, socklen_t len)
+int udp_socket(int role, const struct sockaddr *server, socklen_t srvlen)
 {
     int sock;
 
@@ -183,12 +183,12 @@ int udp_socket(int role, const struct sockaddr *server, socklen_t len)
         return -1;
     }
 
-    if (role == 1 && bind(sock, server, len) < 0) {
+    if (role == 1 && bind(sock, server, srvlen) < 0) {
         fprintf(stderr, "Can't bind socket: %s\n", strerror(errno));
         return -1;
     }
 
-    else if (role == 0 && connect(sock, server, len) < 0) {
+    else if (role == 0 && connect(sock, server, srvlen) < 0) {
         fprintf(stderr, "Can't connect socket: %s\n", strerror(errno));
         return -1;
     }
@@ -253,24 +253,107 @@ void describe_sockaddr(const struct sockaddr *addr, char *desc, int desclen)
 
 
 /*
- * Writes n characters from the given buffer to the TAP fd, which is set
- * to block before the write and set back to non-blocking afterwards.
- * Returns 0 on success, or prints an error and returns -1 on failure.
+ * Reads up to n characters into the buffer from the TAP device without
+ * blocking. Returns the number of characters read on success, or 0 if
+ * there were none available, or prints an error and returns -1 on
+ * failure.
  */
 
-int tap_write(int tap, unsigned char *buf, int n)
+int tap_read(int tap, unsigned char *buf, int len)
+{
+    int n;
+
+    set_blocking(tap, 0);
+
+    n = read(tap, buf, len);
+
+    if (n < 0) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK)
+            return 0;
+
+        fprintf(stderr, "Error reading from TAP device: %s\n",
+                strerror(errno));
+        return n;
+    }
+
+    if (n == 0) {
+        fprintf(stderr, "TAP device unexpectedly closed\n");
+        return -1;
+    }
+
+    return n;
+}
+
+
+/*
+ * Writes n characters from the given buffer to the TAP fd, which is set
+ * to block before the write. Returns 0 on success, or prints an error
+ * and returns -1 on failure.
+ */
+
+int tap_write(int tap, unsigned char *buf, int len)
 {
     set_blocking(tap, 1);
-    while (n > 0) {
-        int written = write(tap, buf, n);
-        if (written <= 0) {
+
+    while (len > 0) {
+        int n = write(tap, buf, len);
+        if (n <= 0) {
             fprintf(stderr, "Error writing to TAP: %s\n", strerror(errno));
             return -1;
         }
-        n -= written;
+        len -= n;
     }
-    set_blocking(tap, 0);
+
     return 0;
+}
+
+
+/*
+ * Reads up to n characters into the buffer from the UDP socket. Returns
+ * the number of characters read on success, or 0 if there were no data
+ * available, or -1 if the caller should try again (i.e., an error that
+ * can be ignored), or prints an error and returns -2 on failure.
+ */
+
+int udp_read(int udp, unsigned char *buf, int len,
+             struct sockaddr *addr, socklen_t *addrlen)
+{
+    int n;
+    char peeraddr[256];
+
+    n = recvfrom(udp, (void *) buf, len, MSG_DONTWAIT|MSG_TRUNC,
+                 addr, addrlen);
+
+    if (n > 0 && n <= len)
+        return n;
+
+    if (n < 0) {
+        if (errno == EAGAIN || errno == EWOULDBLOCK)
+            return 0;
+
+        fprintf(stderr, "Error reading from UDP socket: %s\n",
+                strerror(errno));
+        return -2;
+    }
+
+    /*
+     * We complain at length about the "connection" closing
+     * or receiving oversized packets, but we ultimately
+     * ignore them and carry on.
+     */
+
+    describe_sockaddr(addr, peeraddr, 256);
+
+    if (n == 0) {
+        fprintf(stderr, "Orderly shutdown from %s; ignoring\n",
+                peeraddr);
+    }
+    else if (n > len) {
+        fprintf(stderr, "Received oversize (%d bytes) packet from "
+                "%s; ignoring\n", n, peeraddr);
+    }
+
+    return -1;
 }
 
 
@@ -280,12 +363,11 @@ int tap_write(int tap, unsigned char *buf, int n)
  * Returns 0 on success, or prints an error and returns -1 on failure.
  */
 
-int udp_write(int udp, unsigned char *buf, int n,
+int udp_write(int udp, unsigned char *buf, int len,
               const struct sockaddr *addr, socklen_t addrlen)
 {
-    int err;
     int sent = 0;
-    int msglen = n;
+    int msglen = len;
     unsigned char *p = buf;
 
     /*
@@ -295,16 +377,16 @@ int udp_write(int udp, unsigned char *buf, int n,
      * most cases, we should be done after the first sendto.
      */
 
-    while (sent < n) {
-        err = sendto(udp, p, msglen, 0, addr, addrlen);
+    while (sent < len) {
+        int n = sendto(udp, p, msglen, 0, addr, addrlen);
 
-        if (err < 0 && errno != EMSGSIZE) {
+        if (n < 0 && errno != EMSGSIZE) {
             fprintf(stderr, "Error writing to UDP socket: %s\n",
                     strerror(errno));
             return -1;
         }
 
-        if (err < 0) {
+        if (n < 0) {
             msglen /= 2;
             if (msglen == 0) {
                 fprintf(stderr, "Error writing to UDP socket: %s\n",
@@ -313,10 +395,10 @@ int udp_write(int udp, unsigned char *buf, int n,
             }
         }
         else {
-            p += err;
-            if (p+msglen > buf+n)
-                msglen = buf+n - p;
-            sent += err;
+            p += n;
+            if (p+msglen > buf+len)
+                msglen = buf+len - p;
+            sent += n;
         }
     }
 

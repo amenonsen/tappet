@@ -23,13 +23,16 @@
 int tap_attach(const char *name);
 int read_key(const char *name, unsigned char key[KEYBYTES]);
 int get_sockaddr(const char *address, const char *sport,
-                 struct sockaddr **addr, socklen_t *len);
+                 struct sockaddr **addr, socklen_t *addrlen);
 int udp_socket(int role, const struct sockaddr *server,
                socklen_t srvlen);
 void describe_sockaddr(const struct sockaddr *addr, char *desc, int desclen);
 int set_blocking(int fd, int blocking);
-int tap_write(int tap, unsigned char *buf, int n);
-int udp_write(int udp, unsigned char *buf, int n,
-              const struct sockaddr *addr, socklen_t len);
+int tap_read(int tap, unsigned char *buf, int len);
+int tap_write(int tap, unsigned char *buf, int len);
+int udp_read(int udp, unsigned char *buf, int len,
+             struct sockaddr *addr, socklen_t *addrlen);
+int udp_write(int udp, unsigned char *buf, int len,
+              const struct sockaddr *addr, socklen_t addrlen);
 
 #endif
