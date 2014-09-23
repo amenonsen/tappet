@@ -136,7 +136,11 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
 
     while (1) {
         fd_set r;
-        int n, err;
+        int n, nfds;
+        struct timeval tv;
+
+        tv.tv_sec = 75;
+        tv.tv_usec = 0;
 
         FD_ZERO(&r);
         FD_SET(udp, &r);
@@ -149,10 +153,10 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
         if (peer->sa_family != 0)
             FD_SET(tap, &r);
 
-        err = select(maxfd+1, &r, NULL, NULL, NULL);
-        if (err < 0) {
+        nfds = select(maxfd+1, &r, NULL, NULL, &tv);
+        if (nfds < 0) {
             fprintf(stderr, "select() failed: %s\n", strerror(errno));
-            return err;
+            return nfds;
         }
 
         /*
@@ -169,6 +173,9 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
 
                 n = udp_read(udp, theirnonce, ctbuf, sizeof(ctbuf), peer, &peerlen);
 
+                if (n == 0)
+                    break;
+
                 if (n > 0 && memcmp(lastnonce, theirnonce, NONCEBYTES) >= 0)
                     n = -1;
                 if (n > 0)
@@ -184,14 +191,22 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
                     memset(theirnonce, 0, sizeof(theirnonce));
                 }
 
-                if (n == 0)
-                    break;
+                if (n < -2)
+                    return n;
 
-                if (n == -1)
+                /*
+                 * Either there was an error we want to ignore (n == -1)
+                 * or the decrypted packet wasn't long enough to be a
+                 * valid ethernet frame. Since decryption succeeded,
+                 * we treat it as a keepalive.
+                 */
+
+                if (n < 64)
                     continue;
 
-                if (n < 0)
-                    return n;
+                /*
+                 * Write the decrypted ethernet frame to the TAP device.
+                 */
 
                 if (tap_write(tap, ptbuf+ZEROBYTES, n-ZEROBYTES) < 0)
                     return -1;
@@ -220,6 +235,23 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
                 if (udp_write(udp, ournonce, ctbuf, n, peer, peerlen) < 0)
                     return -1;
             }
+        }
+
+
+        /*
+         * If 75 seconds have elapsed on the client without any traffic,
+         * we send a keepalive packet to the server so that it remembers
+         * the client even after an address change.
+         */
+
+        if (nfds == 0 && role == 0) {
+            ptbuf[ZEROBYTES] = 0xFF;
+
+            increment_nonce(role, ournonce);
+            n = encrypt(k, ournonce, ptbuf, 1+ZEROBYTES, ctbuf);
+
+            if (udp_write(udp, ournonce, ctbuf, n, peer, peerlen) < 0)
+                return -1;
         }
     }
 }
