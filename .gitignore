@@ -3,3 +3,4 @@ tappet-keygen
 nacl-test
 *.key
 *.pub
+stash/*
