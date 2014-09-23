@@ -249,12 +249,12 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
         }
 
         /*
-         * If 75 seconds have elapsed on the client without any traffic,
-         * we send a keepalive packet to the server so that it remembers
-         * the client even after an address change.
+         * If 75 seconds have elapsed without any traffic, we send a
+         * keepalive packet to our peer. (If the client's IP address
+         * changes, this ensures that the server finds out.)
          */
 
-        if (nfds == 0 && role == 0) {
+        if (nfds == 0 && peer->sa_family != 0) {
             increment_nonce(role, ournonce);
             if (send_keepalive(role, udp, peer, peerlen, ournonce, k) < 0)
                 return -1;
