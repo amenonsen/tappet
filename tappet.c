@@ -142,8 +142,8 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
         FD_SET(udp, &r);
 
         /*
-         * Don't listen for TAP packets until we know where to send them
-         * (which the client always does).
+         * Don't listen for TAP packets unless we know where to send
+         * them (which the client always does).
          */
 
         if (peer->sa_family != 0)
