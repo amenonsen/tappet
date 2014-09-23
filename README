@@ -54,7 +54,7 @@ This will put the secret key into A.key and the public key into A.pub.
 Run the equivalent command on B, then copy A.pub to B, and B.pub to A.
 These files can be transmitted in the clear.
 
-Then on the server host A, with fixed address 192.0.2.34, run:
+Assuming your server host A has the public address 192.0.2.34, run:
 
     $ tappet tappet0 ~/A.key ~/B.pub 192.0.2.34 1011 -l
 
