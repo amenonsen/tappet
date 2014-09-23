@@ -129,6 +129,14 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
     if (role == 0) {
         memcpy(peer, server, srvlen);
         peerlen = srvlen;
+
+        /*
+         * Speed things up by telling the server who we are
+         * straightaway, before any traffic needs to be sent.
+         */
+
+        if (send_keepalive(role, udp, peer, peerlen, ournonce, k) < 0)
+            return -1;
     }
 
     /*

@@ -67,9 +67,7 @@ run without producing any output until it encounters an error serious
 enough to merit a warning or an unceremonious exit.
 
 On host B, you should now be able to reach A over the tunnel, i.e. by
-using the IP addresses you assigned to the TAP interface. (Since only
-one end of the tunnel is specified at startup, B must send the first
-packet before A can reach B.)
+using the IP addresses you assigned to the TAP interface.
 
 This code is MIT licensed. Use at your own risk.
 
