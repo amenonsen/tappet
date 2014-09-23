@@ -431,8 +431,8 @@ int udp_write(int udp, unsigned char nonce[NONCEBYTES],
              * do not reduce the MTU on the TAP interfaces to compensate
              * for this (yet).
              */
-            fprintf(stderr, "PMTU is <%d bytes, reduce TAP MTU; "
-                    "dropping packet\n", len);
+            fprintf(stderr, "PMTU is <%d bytes, set TAP MTU to <%d; "
+                    "dropping packet\n", len, len-74);
             return 0;
         }
         fprintf(stderr, "Error writing to UDP socket: %s\n",
