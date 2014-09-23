@@ -68,8 +68,8 @@ int main(int argc, char *argv[])
         return -1;
 
     /*
-     * Now we create a UDP socket. If there's a remaining -l, we'll bind
-     * the server sockaddr to it, otherwise we'll connect to it.
+     * Now we create a UDP socket. If there's a remaining -l, we'll also
+     * bind the server sockaddr to it.
      */
 
     role = argc > 6 && strcmp(argv[6], "-l") == 0;
@@ -115,11 +115,8 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
     crypto_box_beforenm(k, theirpk, oursk);
 
     /*
-     * Each side has UDP packets to sendto() its peer: for the client,
-     * it's the server; for the server, it's the result of recvfrom().
-     * The client connect()s on the socket, but the server doesn't (so
-     * that it can receive packets from a client whose IP address has
-     * changed).
+     * Each side remembers its peer: for the client, it's the server.
+     * For the server, it's whoever sends it valid encrypted packets.
      */
 
     peer = (struct sockaddr *) &peeraddr;
@@ -178,46 +175,49 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
 
         if (FD_ISSET(udp, &r)) {
             while (1) {
-                unsigned char lastnonce[NONCEBYTES];
+                unsigned char newnonce[NONCEBYTES];
+                struct sockaddr_storage newpeer;
+                socklen_t newpeerlen = sizeof(newpeer);
 
-                memcpy(lastnonce, theirnonce, sizeof(theirnonce));
-
-                n = udp_read(udp, theirnonce, ctbuf, sizeof(ctbuf), peer, &peerlen);
+                n = udp_read(udp, newnonce, ctbuf, sizeof(ctbuf),
+                             (struct sockaddr *) &newpeer, &newpeerlen);
 
                 if (n == 0)
                     break;
 
-                if (n > 0 && memcmp(lastnonce, theirnonce, NONCEBYTES) >= 0)
+                if (n > 0 && memcmp(theirnonce, newnonce, NONCEBYTES) >= 0)
                     n = -1;
                 if (n > 0)
-                    n = decrypt(k, theirnonce, ctbuf, n, ptbuf);
+                    n = decrypt(k, newnonce, ctbuf, n, ptbuf);
 
                 /*
-                 * If anything goes wrong on the server, we forget the
-                 * peer so that we don't try to send any packets to it.
+                 * For some errors, we can drop the packet and carry on.
+                 * Others we can't recover from.
                  */
 
-                if (role == 1 && n < 0) {
-                    memset(&peeraddr, 0, sizeof(peeraddr));
-                    memset(theirnonce, 0, sizeof(theirnonce));
-                }
+                if (n == -1)
+                    continue;
 
                 if (n < -2)
                     return n;
 
                 /*
-                 * Either there was an error we want to ignore (n == -1)
-                 * or the decrypted packet wasn't long enough to be a
-                 * valid ethernet frame. Since decryption succeeded,
-                 * we treat it as a keepalive.
+                 * We received a valid encrypted packet, so now we can
+                 * update our record of the peer's address and nonce.
+                 */
+
+                memcpy(theirnonce, newnonce, sizeof(newnonce));
+                memcpy(peer, &newpeer, newpeerlen);
+                peerlen = newpeerlen;
+
+                /*
+                 * If the decrypted packet is not long enough to be an
+                 * Ethernet frame, we treat it as a keepalive and ignore
+                 * it. Otherwise we inject it into the local network.
                  */
 
                 if (n < 64)
                     continue;
-
-                /*
-                 * Write the decrypted ethernet frame to the TAP device.
-                 */
 
                 if (tap_write(tap, ptbuf+ZEROBYTES, n-ZEROBYTES) < 0)
                     return -1;
