@@ -35,6 +35,9 @@ no good way to find the right MTU other than by experimentation.
 
 » Usage
 
+Suppose you want to establish a tunnel between client X and server Y;
+the latter must have a public IP address, say 192.0.2.34.
+
 First, configure TAP interfaces on both hosts. You can create TAP
 interfaces as root with a recent version of ip(8) or with tunctl(8):
 
@@ -44,30 +47,30 @@ interfaces as root with a recent version of ip(8) or with tunctl(8):
 
 Replace "someuser" with the name of an unprivileged user that will be
 running tappet. Next, configure the interfaces: at a minimum, assign
-IP addresses in the same subnet to each interface and bring them up.
+IP addresses in the same unique subnet to them and bring them up.
 
 Next, generate keypairs on both hosts with tappet-keygen:
 
-    $ ./tappet-keygen A
+    $ ./tappet-keygen X
 
-This will put the secret key into A.key and the public key into A.pub.
-Run the equivalent command on B, then copy A.pub to B, and B.pub to A.
+This will put the secret key into X.key and the public key into X.pub.
+Run the equivalent command on Y, then copy X.pub to Y, and Y.pub to X.
 These files can be transmitted in the clear.
 
-On your server host A with public address 192.0.2.34, run:
+On your server host Y, run:
 
-    $ tappet tappet0 ~/A.key ~/B.pub 192.0.2.34 1011 -l
+    $ tappet tappet0 ~/Y.key ~/X.pub 192.0.2.34 1011 -l
 
-Finally, on the client host B:
+Finally, on the client host X:
 
-    $ tappet tappet0 ~/B.key ~/A.pub 192.0.2.34 1011
+    $ tappet tappet0 ~/X.key ~/Y.pub 192.0.2.34 1011
 
 All of these parameters are mandatory. Once started, the program will
 run without producing any output until it encounters an error serious
 enough to merit a warning or an unceremonious exit.
 
-On host B, you should now be able to reach A over the tunnel, i.e. by
-using the IP addresses you assigned to the TAP interface.
+You should now be able to reach X over the tunnel from Y and vice versa,
+i.e. by using the IP addresses assigned to the TAP interface earlier.
 
 This code is MIT licensed. Use at your own risk.
 
