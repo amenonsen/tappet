@@ -237,7 +237,6 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
             }
         }
 
-
         /*
          * If 75 seconds have elapsed on the client without any traffic,
          * we send a keepalive packet to the server so that it remembers

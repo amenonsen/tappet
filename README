@@ -35,23 +35,30 @@ no good way to find the right MTU other than by experimentation.
 
 » Usage
 
-First, configure TAP interfaces on both hosts as root:
+First, configure TAP interfaces on both hosts. You can create TAP
+interfaces as root with a recent version of ip(8) or with tunctl(8):
 
-    # ip tuntap add tappet0 mode tap user tappet
-    # : any other network/bridge configuration :
+    ip tuntap add tappet0 mode tap user someuser
 
-Generate keypairs on both hosts with tappet-keygen:
+    OR: tunctl -u someuser -t tappet0
+
+Replace "someuser" with the name of an unprivileged user that will be
+running tappet. Next, configure the interfaces: at a minimum, assign
+IP addresses in the same subnet to each interface and bring them up.
+
+Next, generate keypairs on both hosts with tappet-keygen:
 
     $ ./tappet-keygen A
 
 This will put the secret key into A.key and the public key into A.pub.
 Run the equivalent command on B, then copy A.pub to B, and B.pub to A.
+These files can be transmitted in the clear.
 
-Then on the "server" host A, with address 192.0.2.34:
+Then on the server host A, with fixed address 192.0.2.34, run:
 
     $ tappet tappet0 ~/A.key ~/B.pub 192.0.2.34 1011 -l
 
-Finally, on the "client" host B:
+Finally, on the client host B:
 
     $ tappet tappet0 ~/B.key ~/A.pub 192.0.2.34 1011
 
