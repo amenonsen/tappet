@@ -8,6 +8,9 @@
 int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
            int tap, int udp, unsigned char oursk[KEYBYTES],
            unsigned char theirpk[KEYBYTES]);
+int send_keepalive(int role, int udp, const struct sockaddr *peer,
+                   socklen_t peerlen, unsigned char nonce[NONCEBYTES],
+                   unsigned char k[crypto_box_BEFORENMBYTES]);
 
 int main(int argc, char *argv[])
 {
@@ -244,13 +247,34 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
          */
 
         if (nfds == 0 && role == 0) {
-            ptbuf[ZEROBYTES] = 0xFF;
-
             increment_nonce(role, ournonce);
-            n = encrypt(k, ournonce, ptbuf, 1+ZEROBYTES, ctbuf);
-
-            if (udp_write(udp, ournonce, ctbuf, n, peer, peerlen) < 0)
+            if (send_keepalive(role, udp, peer, peerlen, ournonce, k) < 0)
                 return -1;
         }
     }
+}
+
+
+/*
+ * Sends an encrypted keepalive packet to the peer. Uses the nonce
+ * without incrementing it. Returns 0 on success, -1 on failure.
+ */
+
+int send_keepalive(int role, int udp, const struct sockaddr *peer,
+                   socklen_t peerlen, unsigned char nonce[NONCEBYTES],
+                   unsigned char k[crypto_box_BEFORENMBYTES])
+{
+    int n;
+    unsigned char p[ZEROBYTES+1];
+    unsigned char c[ZEROBYTES+1];
+
+    memset(p, 0, ZEROBYTES);
+    p[ZEROBYTES] = 0xFF;
+
+    n = encrypt(k, nonce, p, 1+ZEROBYTES, c);
+
+    if (udp_write(udp, nonce, c, n, peer, peerlen) < 0)
+        return -1;
+
+    return 0;
 }
