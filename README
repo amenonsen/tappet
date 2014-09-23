@@ -54,7 +54,7 @@ This will put the secret key into A.key and the public key into A.pub.
 Run the equivalent command on B, then copy A.pub to B, and B.pub to A.
 These files can be transmitted in the clear.
 
-Assuming your server host A has the public address 192.0.2.34, run:
+On your server host A with public address 192.0.2.34, run:
 
     $ tappet tappet0 ~/A.key ~/B.pub 192.0.2.34 1011 -l
 
@@ -62,9 +62,9 @@ Finally, on the client host B:
 
     $ tappet tappet0 ~/B.key ~/A.pub 192.0.2.34 1011
 
-All of these parameters are mandatory. Once started, the program runs
-forever, and exchanges packets between the TAP fd and the UDP socket,
-encrypting in one direction and decrypting in the other.
+All of these parameters are mandatory. Once started, the program will
+run without producing any output until it encounters an error serious
+enough to merit a warning or an unceremonious exit.
 
 This code is MIT licensed. Use at your own risk.
 
