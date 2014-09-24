@@ -9,22 +9,20 @@ address and port (one side asks, the other accepts).
 
 ***WARNING***
 
-This code has not been audited. Everything about encryption and
-security in this document may be untrue. Read the code and draw
-your own conclusions.
+Everything about encryption and security in this document may be untrue.
+Read the code and draw your own conclusions.
 
 ***WARNING***
 
-No attempt is made to obscure the size and timing of packets being sent
-over the wire. Ethernet frames are encrypted as they are received, and
-immediately forwarded to the other side. Encryption is deterministic,
-with a shared secret derived from one side's secret key and the other
-side's public key. There is no renegotiation of keys. In fact, there
-is no negotiation at all.
+The public-domain TweetNaCl library is used for cryptography support.
+See http://cr.yp.to/highspeed/naclcrypto-20090310.pdf for details.
 
-See http://cr.yp.to/highspeed/naclcrypto-20090310.pdf for details about
-the encryption. This program includes a copy of TweetNaCl, which is in
-the public domain.
+Encryption is deterministic, with both sides deriving a shared secret
+from their own secret key and the other side's public key and using a
+unique nonce to encrypt each packet. There is no renegotiation of keys.
+In fact, there is no negotiation at all. Ethernet frames are encrypted
+as they are received and immediately forwarded. No attempt is made to
+obscure the size and timing of packets being sent over the wire.
 
 The encryption adds a constant 56 bytes of overhead to every ethernet
 frame, which are themselves about 18 bytes larger than their payload.
@@ -69,8 +67,8 @@ All of these parameters are mandatory. Once started, the program will
 run without producing any output until it encounters an error serious
 enough to merit a warning or an unceremonious exit.
 
-You should now be able to reach X over the tunnel from Y and vice versa,
-i.e. by using the IP addresses assigned to the TAP interface earlier.
+You should now be able to reach X over the tunnel from Y and vice versa
+by using the IP addresses assigned to the TAP interface earlier.
 
 This code is MIT licensed. Use at your own risk.
 
