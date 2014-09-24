@@ -4,8 +4,8 @@ tappet
 This program attaches to a pre-configured TAP interface and establishes
 an encrypted UDP tunnel between itself and another copy of the program
 running on another host. Each instance must have its own secret key and
-the public key of the other side; and both sides must be given the same
-address and port (one side asks, the other accepts).
+the public key of the other side; the server must know where to listen
+and the client must know where to connect.
 
 ***WARNING***
 
@@ -55,11 +55,11 @@ This will put the secret key into X.key and the public key into X.pub.
 Run the equivalent command on Y, then copy X.pub to Y, and Y.pub to X.
 These files can be transmitted in the clear.
 
-On your server host Y, run:
+Now start tappet on the server and tell it where to listen:
 
     $ tappet tappet0 ~/Y.key ~/X.pub 192.0.2.34 1011 -l
 
-Finally, on the client host X:
+Finally, start tappet on the client and tell it where to connect:
 
     $ tappet tappet0 ~/X.key ~/Y.pub 192.0.2.34 1011
 
