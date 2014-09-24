@@ -250,8 +250,8 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
 
         /*
          * If 75 seconds have elapsed without any traffic, we send a
-         * keepalive packet to our peer. (If the client's IP address
-         * changes, this ensures that the server finds out.)
+         * keepalive packet to our peer. (This will ensure that both
+         * peers find out about IP address changes.)
          */
 
         if (nfds == 0 && peer->sa_family != 0) {
