@@ -1,0 +1,9 @@
+#!/bin/sh
+
+set -e
+
+hostname=$(hostname | sed 's/\..*//' | tr -cd '[a-z][A-Z][0-9]')
+abi=$(build/$hostname/bin/okabi)
+
+ln -sf $hostname/include/$abi build/include
+ln -sf $hostname/lib/$abi build/lib
