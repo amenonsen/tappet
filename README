@@ -14,7 +14,7 @@ Read the code and draw your own conclusions.
 
 ***WARNING***
 
-The public-domain TweetNaCl library is used for cryptography support.
+The public-domain NaCl library is used for cryptography support.
 See http://cr.yp.to/highspeed/naclcrypto-20090310.pdf for details.
 
 Encryption is deterministic, with both sides deriving a shared secret
