@@ -1,4 +1,4 @@
-CFLAGS = -Wall $(OPTIM) -D_POSIX_SOURCE -std=c99 -pedantic
+CFLAGS = -Wall $(OPTIM) -D_POSIX_SOURCE -D_POSIX_C_SOURCE=199309 -std=c99 -pedantic -lrt
 
 SOURCES = crypt.c util.c tweetnacl.c devurandom.c
 

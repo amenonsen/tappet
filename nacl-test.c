@@ -44,19 +44,26 @@ int main()
     printf("crypto_box_beforenm(kk) = %d\n", i);
     dump("kk", kk, crypto_box_BEFORENMBYTES);
 
+    i = 0;
+    while (i < crypto_box_NONCEBYTES) {
+        n[i] = 0xFF;
+        i++;
+    }
+    dump("n", n, crypto_box_NONCEBYTES);
+
     generate_nonce(0, n);
     dump("n", n, crypto_box_NONCEBYTES);
 
     i = 0;
     while (i < 123140) {
-        increment_nonce(0, n);
+        update_nonce(0, n);
         i++;
     }
     dump("n'", n, crypto_box_NONCEBYTES);
 
     i = 0;
     while (i < 35983224) {
-        increment_nonce(0, n);
+        update_nonce(0, n);
         i++;
     }
     dump("n''", n, crypto_box_NONCEBYTES);

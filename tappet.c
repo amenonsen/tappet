@@ -233,7 +233,7 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
             while (1) {
                 n = tap_read(tap, ptbuf+ZEROBYTES, sizeof(ptbuf)-ZEROBYTES);
                 if (n > 0) {
-                    increment_nonce(role, ournonce);
+                    update_nonce(role, ournonce);
                     n = encrypt(k, ournonce, ptbuf, n+ZEROBYTES, ctbuf);
                 }
 
@@ -255,7 +255,7 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
          */
 
         if (nfds == 0 && peer->sa_family != 0) {
-            increment_nonce(role, ournonce);
+            update_nonce(role, ournonce);
             if (send_keepalive(role, udp, peer, peerlen, ournonce, k) < 0)
                 return -1;
         }
@@ -265,7 +265,7 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
 
 /*
  * Sends an encrypted keepalive packet to the peer. Uses the nonce
- * without incrementing it. Returns 0 on success, -1 on failure.
+ * without updating it. Returns 0 on success, -1 on failure.
  */
 
 int send_keepalive(int role, int udp, const struct sockaddr *peer,

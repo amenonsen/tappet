@@ -1,6 +1,7 @@
 #include "tappet.h"
 
-#include <limits.h>
+#include <stdint.h>
+#include <time.h>
 
 extern void randombytes(unsigned char *buf, unsigned long long len);
 
@@ -10,8 +11,6 @@ extern void randombytes(unsigned char *buf, unsigned long long len);
 
 void generate_nonce(int role, unsigned char nonce[NONCEBYTES])
 {
-    int i;
-
     /*
      * This is what naclcrypto-20090310.pdf has to say about nonce
      * generation:
@@ -30,60 +29,36 @@ void generate_nonce(int role, unsigned char nonce[NONCEBYTES])
      * the current value of the counter does not leak the traffic rate.
      * Note that “increase” does not mean “increase or decrease”; if the
      * clock jumps backwards, the counter must continue to increase.»
-     *
-     * For now, we generate a twenty-byte counter starting at 0 (for the
-     * client) and 1 (for the server) followed by 32 random bits.
      */
 
-    i = 0;
-    while (i < NONCEBYTES-4-1)
-        nonce[i++] = 0;
-    nonce[i++] = role;
-    randombytes(nonce+i, 4);
+    update_nonce(role, nonce);
+    randombytes(nonce+NONCEBYTES-4, 4);
 }
 
 
 /*
- * Increments the given nonce as appropriate for the role.
+ * Updates the (counter part of the) given nonce as appropriate for the
+ * role.
  */
 
-void increment_nonce(int role, unsigned char nonce[NONCEBYTES])
+void update_nonce(int role, unsigned char nonce[NONCEBYTES])
 {
-    /*
-     * For now, we just increment the twenty-byte counter part of the
-     * nonce by 2, no matter what the role.
-     */
+    int i = 0;
+    uint64_t n;
+    struct timespec tp;
 
-    int inc = 2;
-    int idx = 20;
-    unsigned char *d;
-
-    do {
-        d = nonce + --idx;
-
-        if (*d+inc <= 255) {
-            *d += inc;
-            return;
-        }
-        *d = 0;
-
-        inc = 1;
+    if (clock_gettime(CLOCK_MONOTONIC, &tp) < 0) {
+        fprintf(stderr, "clock_gettime() failed: %s\n", strerror(errno));
+        exit(-1);
     }
-    while (idx > 0);
 
-    /*
-     * If we haven't returned by now, then we overflowed the counter,
-     * which would be 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF on the
-     * server, and 0xFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFE on the
-     * client. We can't even generate a new nonce, because it won't be
-     * larger than the old one (since the randomness is in the least
-     * significant portion of the twenty-four bytes).
-     *
-     * OH NO! THERE'S NOTHING WE CAN DO!
-     */
+    n = tp.tv_sec * 1000*1000*1000 + tp.tv_nsec;
 
-    fprintf(stderr, "Goodbye, cruel world.\n");
-    exit(-INT_MAX);
+    while (i < NONCEBYTES-4) {
+        nonce[NONCEBYTES-4-i-1] = n & 0xFF;
+        n >>= 8;
+        i++;
+    }
 }
 
 
