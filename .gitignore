@@ -1,6 +1,8 @@
 tappet
 tappet-keygen
 nacl-test
+*.o
 *.key
 *.pub
 stash/*
+nacl*/build/*

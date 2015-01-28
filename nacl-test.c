@@ -1,5 +1,4 @@
 #include "tappet.h"
-#include "tweetnacl.h"
 
 void dump(char *prefix, unsigned char *buf, int len)
 {

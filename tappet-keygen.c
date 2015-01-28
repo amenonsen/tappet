@@ -5,7 +5,7 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include "tweetnacl.h"
+#include "crypto_box.h"
 
 int main(int argc, char *argv[])
 {

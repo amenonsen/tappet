@@ -1,14 +1,23 @@
-CFLAGS = -Wall $(OPTIM) -D_POSIX_SOURCE -D_POSIX_C_SOURCE=199309 -std=c99 -pedantic -lrt
+HOSTNAME = $(shell hostname | sed 's/\..*//' | tr -cd '[a-z][A-Z][0-9]')
 
-SOURCES = crypt.c util.c tweetnacl.c devurandom.c
+NACLDIR = nacl/build/$(HOSTNAME)
+NACLABI = $(shell $(NACLDIR)/bin/okabi)
+NACLINC = $(NACLDIR)/include/$(NACLABI)
+NACLLIB = $(NACLDIR)/lib/$(NACLABI)
+
+CFLAGS = -std=c99 -Wall -pedantic -D_POSIX_SOURCE -D_POSIX_C_SOURCE=199309 -I$(NACLINC) $(OPTIM)
+LDLIBS = -lrt
+
+OBJS = crypt.o util.o
+EXEC = tappet tappet-keygen nacl-test
+NACL = $(NACLLIB)/libnacl.a $(NACLLIB)/randombytes.o
 
 all: tappet tappet-keygen
 
-tappet: $(SOURCES)
+$(EXEC): $(OBJS) $(NACL)
 
-tappet-keygen: $(SOURCES)
-
-nacl-test: $(SOURCES)
+$(NACL):
+	cd nacl && ./do
 
 clean:
-	rm -f tappet tappet-keygen nacl-test
+	rm -f $(OBJS) $(EXEC)

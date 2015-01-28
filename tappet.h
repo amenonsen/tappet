@@ -18,7 +18,7 @@
 #include <linux/if_tun.h>
 #include <netinet/in.h>
 
-#include "tweetnacl.h"
+#include "crypto_box.h"
 
 #define KEYBYTES 32
 #define ZEROBYTES crypto_box_ZEROBYTES
