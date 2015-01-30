@@ -37,8 +37,8 @@ void generate_nonce(int role, unsigned char nonce[NONCEBYTES])
 
 
 /*
- * Updates the (counter part of the) given nonce as appropriate for the
- * role.
+ * Updates the twenty-byte counter part of the given nonce (but the role
+ * does not presently influence the counter).
  */
 
 void update_nonce(int role, unsigned char nonce[NONCEBYTES])
