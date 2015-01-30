@@ -176,6 +176,7 @@ int get_sockaddr(const char *address, const char *sport,
 int udp_socket(int role, const struct sockaddr *server, socklen_t srvlen)
 {
     int sock;
+    int val = IP_PMTUDISC_DO;
 
     sock = socket(server->sa_family, SOCK_DGRAM, 0);
     if (sock < 0) {
@@ -187,6 +188,8 @@ int udp_socket(int role, const struct sockaddr *server, socklen_t srvlen)
         fprintf(stderr, "Can't bind socket: %s\n", strerror(errno));
         return -1;
     }
+
+    (void) setsockopt(sock, IPPROTO_IP, IP_MTU_DISCOVER, &val, sizeof(val));
 
     return sock;
 }
