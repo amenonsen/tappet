@@ -280,6 +280,8 @@ int send_keepalive(int role, int udp, const struct sockaddr *peer,
     p[ZEROBYTES] = 0xFF;
 
     n = encrypt(k, nonce, p, 1+ZEROBYTES, c);
+    if (n < 0)
+        return -1;
 
     if (udp_write(udp, nonce, c, n, peer, peerlen) < 0)
         return -1;
