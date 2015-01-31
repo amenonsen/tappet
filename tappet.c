@@ -8,7 +8,7 @@
 int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
            int tap, int udp, unsigned char oursk[KEYBYTES],
            unsigned char theirpk[KEYBYTES]);
-int send_keepalive(int role, int udp, const struct sockaddr *peer,
+int send_keepalive(int role, int udp, uint16_t size, const struct sockaddr *peer,
                    socklen_t peerlen, unsigned char nonce[NONCEBYTES],
                    unsigned char k[crypto_box_BEFORENMBYTES]);
 
@@ -95,6 +95,9 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
            unsigned char theirpk[KEYBYTES])
 {
     int maxfd;
+    uint16_t biggest_rcvd;
+    uint16_t biggest_sent;
+    uint16_t biggest_tried;
     unsigned char ptbuf[2048];
     unsigned char ctbuf[2048];
     unsigned char ournonce[NONCEBYTES];
@@ -132,9 +135,20 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
          * straightaway, before any traffic needs to be sent.
          */
 
-        if (send_keepalive(role, udp, peer, peerlen, ournonce, k) < 0)
+        if (send_keepalive(role, udp, 0, peer, peerlen, ournonce, k) < 0)
             return -1;
     }
+
+    /*
+     * We set DF on outgoing UDP packets, but we cannot rely solely upon
+     * path MTU discovery working correctly. So each side keeps track of
+     * the largest packet it tries to send and the largest valid packet
+     * it receives and informs its peer of the latter through keepalive
+     * messages. If all goes well, one side's biggest_sent (== tried)
+     * should be the other side's biggest_rcvd.
+     */
+
+    biggest_tried = biggest_sent = biggest_rcvd = 0;
 
     /*
      * Now both sides loop waiting for readability events on their fds.
@@ -178,6 +192,7 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
                 unsigned char newnonce[NONCEBYTES];
                 struct sockaddr_storage newpeer;
                 socklen_t newpeerlen = sizeof(newpeer);
+                uint16_t rcvd;
 
                 n = udp_read(udp, newnonce, ctbuf, sizeof(ctbuf),
                              (struct sockaddr *) &newpeer, &newpeerlen);
@@ -185,6 +200,7 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
                 if (n == 0)
                     break;
 
+                rcvd = n;
                 if (n > 0 && memcmp(theirnonce, newnonce, NONCEBYTES) >= 0)
                     n = -1;
                 if (n > 0)
@@ -210,14 +226,24 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
                 memcpy(peer, &newpeer, newpeerlen);
                 peerlen = newpeerlen;
 
+                if (biggest_rcvd < rcvd)
+                    biggest_rcvd = rcvd;
+
                 /*
                  * If the decrypted packet is not long enough to be an
                  * Ethernet frame, we treat it as a keepalive and ignore
                  * it. Otherwise we inject it into the local network.
                  */
 
-                if (n < 64)
+                if (n < 64) {
+                    unsigned char *p = ptbuf + ZEROBYTES;
+                    if (n-ZEROBYTES == 3 && *p++ == 0xFE) {
+                        uint16_t size = (*p << 8) | *(p+1);
+                        if (biggest_sent < size)
+                            biggest_sent = size;
+                    }
                     continue;
+                }
 
                 if (tap_write(tap, ptbuf+ZEROBYTES, n-ZEROBYTES) < 0)
                     return -1;
@@ -243,6 +269,9 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
                 if (n < 0)
                     return n;
 
+                if (biggest_tried < n+NONCEBYTES)
+                    biggest_tried = n+NONCEBYTES;
+
                 if (udp_write(udp, ournonce, ctbuf, n, peer, peerlen) < 0)
                     return -1;
             }
@@ -256,7 +285,8 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
 
         if (nfds == 0 && peer->sa_family != 0) {
             update_nonce(role, ournonce);
-            if (send_keepalive(role, udp, peer, peerlen, ournonce, k) < 0)
+            if (send_keepalive(role, udp, biggest_rcvd, peer, peerlen,
+                               ournonce, k) < 0)
                 return -1;
         }
     }
@@ -264,22 +294,27 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
 
 
 /*
- * Sends an encrypted keepalive packet to the peer. Uses the nonce
- * without updating it. Returns 0 on success, -1 on failure.
+ * Sends an encrypted keepalive packet with the given size to the peer.
+ * Uses the nonce without updating it. Returns 0 on success, -1 on
+ * failure.
  */
 
-int send_keepalive(int role, int udp, const struct sockaddr *peer,
-                   socklen_t peerlen, unsigned char nonce[NONCEBYTES],
+int send_keepalive(int role, int udp, uint16_t size,
+                   const struct sockaddr *peer, socklen_t peerlen,
+                   unsigned char nonce[NONCEBYTES],
                    unsigned char k[crypto_box_BEFORENMBYTES])
 {
     int n;
-    unsigned char p[ZEROBYTES+1];
-    unsigned char c[ZEROBYTES+1];
+    unsigned char p[ZEROBYTES+3];
+    unsigned char c[ZEROBYTES+3];
 
-    memset(p, 0, ZEROBYTES);
-    p[ZEROBYTES] = 0xFF;
+    n = ZEROBYTES;
+    memset(p, 0, n);
+    p[n++] = 0xFE;
+    p[n++] = size >> 8;
+    p[n++] = size & 0xFF;
 
-    n = encrypt(k, nonce, p, 1+ZEROBYTES, c);
+    n = encrypt(k, nonce, p, sizeof (p), c);
     if (n < 0)
         return -1;
 

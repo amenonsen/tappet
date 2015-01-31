@@ -1,6 +1,5 @@
 #include "tappet.h"
 
-#include <stdint.h>
 #include <time.h>
 
 extern void randombytes(unsigned char *buf, unsigned long long len);
