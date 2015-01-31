@@ -161,7 +161,7 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
         int n, nfds;
         struct timeval tv;
 
-        tv.tv_sec = 75;
+        tv.tv_sec = 10;
         tv.tv_usec = 0;
 
         FD_ZERO(&r);
@@ -278,7 +278,7 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
         }
 
         /*
-         * If 75 seconds have elapsed without any traffic, we send a
+         * If 10 seconds have elapsed without any traffic, we send a
          * keepalive packet to our peer. (This will ensure that both
          * peers find out about IP address changes.)
          */
