@@ -51,7 +51,7 @@ void update_nonce(int role, unsigned char nonce[NONCEBYTES])
         exit(-1);
     }
 
-    n = tp.tv_sec * 1000*1000*1000 + tp.tv_nsec;
+    n = ((uint64_t)tp.tv_sec) * 1000*1000*1000 + tp.tv_nsec;
 
     while (i < NONCEBYTES-4) {
         nonce[NONCEBYTES-4-i-1] = n & 0xFF;
