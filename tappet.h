@@ -41,8 +41,8 @@ int udp_write(int udp, unsigned char nonce[NONCEBYTES],
               unsigned char *buf, int len, const struct sockaddr *addr,
               socklen_t addrlen);
 
-void generate_nonce(int role, unsigned char nonce[NONCEBYTES]);
-void update_nonce(int role, unsigned char nonce[NONCEBYTES]);
+void generate_nonce(unsigned char nonce[NONCEBYTES]);
+void update_nonce(unsigned char nonce[NONCEBYTES]);
 int decrypt(unsigned char k[crypto_box_BEFORENMBYTES],
             unsigned char nonce[NONCEBYTES],
             unsigned char *ctbuf, int ctlen,

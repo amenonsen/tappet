@@ -5,10 +5,10 @@
 extern void randombytes(unsigned char *buf, unsigned long long len);
 
 /*
- * Generates a nonce based on our role into the given buffer.
+ * Generates a nonce into the given buffer.
  */
 
-void generate_nonce(int role, unsigned char nonce[NONCEBYTES])
+void generate_nonce(unsigned char nonce[NONCEBYTES])
 {
     /*
      * This is what naclcrypto-20090310.pdf has to say about nonce
@@ -30,17 +30,16 @@ void generate_nonce(int role, unsigned char nonce[NONCEBYTES])
      * clock jumps backwards, the counter must continue to increase.»
      */
 
-    update_nonce(role, nonce);
+    update_nonce(nonce);
     randombytes(nonce+NONCEBYTES-4, 4);
 }
 
 
 /*
- * Updates the twenty-byte counter part of the given nonce (but the role
- * does not presently influence the counter).
+ * Updates the given nonce.
  */
 
-void update_nonce(int role, unsigned char nonce[NONCEBYTES])
+void update_nonce(unsigned char nonce[NONCEBYTES])
 {
     int i = 0;
     uint64_t n;
