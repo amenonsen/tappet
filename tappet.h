@@ -27,6 +27,7 @@
 
 int tap_attach(const char *name);
 int read_key(const char *name, unsigned char key[KEYBYTES]);
+uint32_t get_nonce_prefix(const char *name);
 int get_sockaddr(const char *address, const char *sport,
                  struct sockaddr **addr, socklen_t *addrlen);
 int udp_socket(int role, const struct sockaddr *server,
@@ -41,7 +42,8 @@ int udp_write(int udp, unsigned char nonce[NONCEBYTES],
               unsigned char *buf, int len, const struct sockaddr *addr,
               socklen_t addrlen);
 
-void generate_nonce(unsigned char nonce[NONCEBYTES]);
+void generate_nonce(uint32_t prefix,
+                    unsigned char nonce[NONCEBYTES]);
 void update_nonce(unsigned char nonce[NONCEBYTES]);
 int decrypt(unsigned char k[crypto_box_BEFORENMBYTES],
             unsigned char nonce[NONCEBYTES],

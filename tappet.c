@@ -6,7 +6,8 @@
 #include "tappet.h"
 
 int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
-           int tap, int udp, unsigned char oursk[KEYBYTES],
+           int tap, int udp, uint32_t nonce_prefix,
+           unsigned char oursk[KEYBYTES],
            unsigned char theirpk[KEYBYTES]);
 int send_keepalive(int role, int udp, uint16_t size, const struct sockaddr *peer,
                    socklen_t peerlen, unsigned char nonce[NONCEBYTES],
@@ -15,6 +16,7 @@ int send_keepalive(int role, int udp, uint16_t size, const struct sockaddr *peer
 int main(int argc, char *argv[])
 {
     int tap, udp, role;
+    uint32_t nonce_prefix;
     unsigned char oursk[KEYBYTES];
     unsigned char theirpk[KEYBYTES];
     struct sockaddr *server;
@@ -27,8 +29,8 @@ int main(int argc, char *argv[])
      * the server side.
      */
 
-    if (argc < 6) {
-        fprintf(stderr, "Usage: tappet ifaceN /our/privkey /their/pubkey address port [-l]\n");
+    if (argc < 7) {
+        fprintf(stderr, "Usage: tappet ifaceN nonce-file /our/privkey /their/pubkey address port [-l]\n");
         return -1;
     }
 
@@ -47,15 +49,24 @@ int main(int argc, char *argv[])
         return -1;
 
     /*
+     * Read a four-byte value from the given nonce file, increment it,
+     * write it back out, and use the value as the nonce prefix.
+     */
+
+    nonce_prefix = get_nonce_prefix(argv[2]);
+    if (nonce_prefix == 0)
+        return -1;
+
+    /*
      * Load our own secret key and the other side's public key from the
      * given files. We assume that the keys have been competently
      * generated.
      */
 
-    if (read_key(argv[2], oursk) < 0)
+    if (read_key(argv[3], oursk) < 0)
         return -1;
 
-    if (read_key(argv[3], theirpk) < 0)
+    if (read_key(argv[4], theirpk) < 0)
         return -1;
 
     /*
@@ -64,7 +75,7 @@ int main(int argc, char *argv[])
      * into a sockaddr.
      */
 
-    if (get_sockaddr(argv[4], argv[5], &server, &srvlen) < 0)
+    if (get_sockaddr(argv[5], argv[6], &server, &srvlen) < 0)
         return -1;
 
     /*
@@ -72,7 +83,7 @@ int main(int argc, char *argv[])
      * bind the server sockaddr to it.
      */
 
-    role = argc > 6 && strcmp(argv[6], "-l") == 0;
+    role = argc > 7 && strcmp(argv[7], "-l") == 0;
     udp = udp_socket(role, server, srvlen);
     if (udp < 0)
         return -1;
@@ -81,7 +92,8 @@ int main(int argc, char *argv[])
      * Now we start the encrypted tunnel and let it run.
      */
 
-    return tunnel(role, server, srvlen, tap, udp, oursk, theirpk);
+    return tunnel(role, server, srvlen, tap, udp, nonce_prefix,
+                  oursk, theirpk);
 }
 
 /*
@@ -91,7 +103,8 @@ int main(int argc, char *argv[])
  */
 
 int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
-           int tap, int udp, unsigned char oursk[KEYBYTES],
+           int tap, int udp, uint32_t nonce_prefix,
+           unsigned char oursk[KEYBYTES],
            unsigned char theirpk[KEYBYTES])
 {
     int maxfd;
@@ -112,7 +125,7 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
      * a shared secret from the two keys.
      */
 
-    generate_nonce(ournonce);
+    generate_nonce(nonce_prefix, ournonce);
     memset(ptbuf, 0, ZEROBYTES);
     memset(theirnonce, 0, sizeof(theirnonce));
     crypto_box_beforenm(k, theirpk, oursk);

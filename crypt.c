@@ -5,10 +5,11 @@
 extern void randombytes(unsigned char *buf, unsigned long long len);
 
 /*
- * Generates a nonce into the given buffer.
+ * Generates a nonce with the given prefix into the given buffer.
  */
 
-void generate_nonce(unsigned char nonce[NONCEBYTES])
+void generate_nonce(uint32_t prefix,
+                    unsigned char nonce[NONCEBYTES])
 {
     /*
      * This is what naclcrypto-20090310.pdf has to say about nonce
@@ -28,20 +29,31 @@ void generate_nonce(unsigned char nonce[NONCEBYTES])
      * the current value of the counter does not leak the traffic rate.
      * Note that “increase” does not mean “increase or decrease”; if the
      * clock jumps backwards, the counter must continue to increase.»
+     *
+     * We use a four-byte prefix, twelve bytes initialised at startup
+     * with random data, and an eight-byte nanosecond counter. We write
+     * the prefix and counter in network byte order, because the nonce
+     * is later compared with memcmp().
      */
 
+    nonce[0] = prefix >> 24;
+    nonce[1] = prefix >> 16;
+    nonce[2] = prefix >> 8;
+    nonce[3] = prefix;
+
+    randombytes(nonce+4, 12);
+
     update_nonce(nonce);
-    randombytes(nonce+NONCEBYTES-4, 4);
 }
 
 
 /*
- * Updates the given nonce.
+ * Updates the counter portion of the given nonce.
  */
 
 void update_nonce(unsigned char nonce[NONCEBYTES])
 {
-    int i = 0;
+    int i;
     uint64_t n;
     struct timespec tp;
 
@@ -52,8 +64,9 @@ void update_nonce(unsigned char nonce[NONCEBYTES])
 
     n = ((uint64_t)tp.tv_sec) * 1000*1000*1000 + tp.tv_nsec;
 
-    while (i < NONCEBYTES-4) {
-        nonce[NONCEBYTES-4-i-1] = n & 0xFF;
+    i = 0;
+    while (i < 8) {
+        nonce[NONCEBYTES-i-1] = n & 0xFF;
         n >>= 8;
         i++;
     }

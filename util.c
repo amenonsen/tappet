@@ -121,6 +121,69 @@ int read_key(const char *name, unsigned char key[KEYBYTES])
     return 0;
 }
 
+/*
+ * Opens the given file, makes sure it contains exactly four bytes,
+ * reads the bytes and interprets them as an unsigned 32-bit integer,
+ * increments the integer, checks that it did not overflow, writes the
+ * four modified bytes back out to the start of the file, and closes it.
+ * Returns a non-zero 32-bit nonce on success, or 0 on failure of any of
+ * the steps above.
+ */
+
+uint32_t get_nonce_prefix(const char *name)
+{
+    int fd, n;
+    struct stat st;
+    unsigned char buf[4];
+
+    fd = open(name, O_RDWR);
+    if (fd < 0) {
+        fprintf(stderr, "Couldn't open nonce file %s: %s\n", name,
+                strerror(errno));
+        return 0;
+    }
+
+    n = fstat(fd, &st);
+    if (n < 0) {
+        fprintf(stderr, "Couldn't fstat nonce file %s: %s\n", name,
+                strerror(errno));
+        return 0;
+    }
+    if (st.st_size != 4) {
+        fprintf(stderr, "Nonce file %s must contain exactly 4 bytes, not %lu\n",
+                name, st.st_size);
+        return 0;
+    }
+
+    n = read(fd, buf, 4);
+    if (n != 4) {
+        if (n < 0)
+            fprintf(stderr, "Couldn't read from nonce file %s: %s\n", name,
+                    strerror(errno));
+        else
+            fprintf(stderr, "Expected 4 bytes from nonce file %s, got %d bytes\n",
+                    name, n);
+        return 0;
+    }
+
+    *(uint32_t *)buf += 1;
+    if (*(uint32_t *)buf == 0) {
+        fprintf(stderr, "Nonce prefix overflow; cannot continue\n"
+                "Regenerate keys on both peers and reset nonce files.\n");
+        return 0;
+    }
+
+    if (lseek(fd, 0, SEEK_SET) != 0 ||
+        write(fd, buf, 4) != 4 ||
+        close(fd) != 0)
+    {
+        fprintf(stderr, "Couldn't rewrite nonce file %s: %s\n", name,
+                strerror(errno));
+        return 0;
+    }
+
+    return *(uint32_t *)buf;
+}
 
 /*
  * Takes two command line arguments and tries to parse them as an IP

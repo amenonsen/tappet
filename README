@@ -53,15 +53,20 @@ Next, generate keypairs on both hosts with tappet-keygen:
 
 This will put the secret key into X.key and the public key into X.pub.
 Run the equivalent command on Y, then copy X.pub to Y, and Y.pub to X.
-These files can be transmitted in the clear.
+These .pub files can be transmitted in the clear.
+
+Create a four-byte nonce file containing zeroes on both hosts. This file
+must be writable by the user that tappet will run as.
+
+    $ dd if=/dev/zero of=nonce bs=1 count=4
 
 Now start tappet on the server and tell it where to listen:
 
-    $ tappet tappet0 ~/Y.key ~/X.pub 192.0.2.34 1011 -l
+    $ tappet tappet0 ~/nonce ~/Y.key ~/X.pub 192.0.2.34 1011 -l
 
 Finally, start tappet on the client and tell it where to connect:
 
-    $ tappet tappet0 ~/X.key ~/Y.pub 192.0.2.34 1011
+    $ tappet tappet0 ~/nonce ~/X.key ~/Y.pub 192.0.2.34 1011
 
 All of these parameters are mandatory. Once started, the program will
 run without producing any output until it encounters an error serious
