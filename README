@@ -62,11 +62,11 @@ must be writable by the user that tappet will run as.
 
 Now start tappet on the server and tell it where to listen:
 
-    $ tappet tappet0 ~/nonce ~/Y.key ~/X.pub 192.0.2.34 1011 -l
+    $ tappet -l tappet0 ~/Y.key 192.0.2.34 1011 ~/X.pub ~/nonce 
 
 Finally, start tappet on the client and tell it where to connect:
 
-    $ tappet tappet0 ~/nonce ~/X.key ~/Y.pub 192.0.2.34 1011
+    $ tappet tappet0 ~/X.key 192.0.2.34 1011 ~/Y.pub ~/nonce 
 
 All of these parameters are mandatory. Once started, the program will
 run without producing any output until it encounters an error serious
