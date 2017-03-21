@@ -5,17 +5,17 @@
 
 #include "tappet.h"
 
-int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
+int tunnel(int listen, const struct sockaddr *server, socklen_t srvlen,
            int tap, int udp, uint32_t nonce_prefix,
            unsigned char oursk[KEYBYTES],
            unsigned char theirpk[KEYBYTES]);
-int send_keepalive(int role, int udp, uint16_t size, const struct sockaddr *peer,
+int send_keepalive(int listen, int udp, uint16_t size, const struct sockaddr *peer,
                    socklen_t peerlen, unsigned char nonce[NONCEBYTES],
                    unsigned char k[crypto_box_BEFORENMBYTES]);
 
 int main(int argc, char *argv[])
 {
-    int tap, udp, role;
+    int tap, udp, listen;
     uint32_t nonce_prefix;
     unsigned char oursk[KEYBYTES];
     unsigned char theirpk[KEYBYTES];
@@ -83,8 +83,8 @@ int main(int argc, char *argv[])
      * bind the server sockaddr to it.
      */
 
-    role = argc > 7 && strcmp(argv[7], "-l") == 0;
-    udp = udp_socket(role, server, srvlen);
+    listen = argc > 7 && strcmp(argv[7], "-l") == 0;
+    udp = udp_socket(listen, server, srvlen);
     if (udp < 0)
         return -1;
 
@@ -92,7 +92,7 @@ int main(int argc, char *argv[])
      * Now we start the encrypted tunnel and let it run.
      */
 
-    return tunnel(role, server, srvlen, tap, udp, nonce_prefix,
+    return tunnel(listen, server, srvlen, tap, udp, nonce_prefix,
                   oursk, theirpk);
 }
 
@@ -102,7 +102,7 @@ int main(int argc, char *argv[])
  * forwards in the other direction.
  */
 
-int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
+int tunnel(int listen, const struct sockaddr *server, socklen_t srvlen,
            int tap, int udp, uint32_t nonce_prefix,
            unsigned char oursk[KEYBYTES],
            unsigned char theirpk[KEYBYTES])
@@ -139,7 +139,7 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
     peerlen = sizeof(peeraddr);
     memset(peer, 0, peerlen);
 
-    if (role == 0) {
+    if (listen == 0) {
         memcpy(peer, server, srvlen);
         peerlen = srvlen;
 
@@ -148,7 +148,7 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
          * straightaway, before any traffic needs to be sent.
          */
 
-        if (send_keepalive(role, udp, 0, peer, peerlen, ournonce, k) < 0)
+        if (send_keepalive(listen, udp, 0, peer, peerlen, ournonce, k) < 0)
             return -1;
     }
 
@@ -298,7 +298,7 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
 
         if (nfds == 0 && peer->sa_family != 0) {
             update_nonce(ournonce);
-            if (send_keepalive(role, udp, biggest_rcvd, peer, peerlen,
+            if (send_keepalive(listen, udp, biggest_rcvd, peer, peerlen,
                                ournonce, k) < 0)
                 return -1;
         }
@@ -312,7 +312,7 @@ int tunnel(int role, const struct sockaddr *server, socklen_t srvlen,
  * failure.
  */
 
-int send_keepalive(int role, int udp, uint16_t size,
+int send_keepalive(int listen, int udp, uint16_t size,
                    const struct sockaddr *peer, socklen_t peerlen,
                    unsigned char nonce[NONCEBYTES],
                    unsigned char k[crypto_box_BEFORENMBYTES])

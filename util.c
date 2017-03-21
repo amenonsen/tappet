@@ -232,11 +232,11 @@ int get_sockaddr(const char *address, const char *sport,
 
 
 /*
- * Creates a UDP socket, and if role is 1, also binds it to the given
+ * Creates a UDP socket, and if listen is 1, also binds it to the given
  * server address. Returns the socket on success, or -1 on failure.
  */
 
-int udp_socket(int role, const struct sockaddr *server, socklen_t srvlen)
+int udp_socket(int listen, const struct sockaddr *server, socklen_t srvlen)
 {
     int sock;
     int val;
@@ -247,7 +247,7 @@ int udp_socket(int role, const struct sockaddr *server, socklen_t srvlen)
         return -1;
     }
 
-    if (role == 1 && bind(sock, server, srvlen) < 0) {
+    if (listen == 1 && bind(sock, server, srvlen) < 0) {
         fprintf(stderr, "Can't bind socket: %s\n", strerror(errno));
         return -1;
     }
