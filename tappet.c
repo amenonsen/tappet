@@ -15,28 +15,33 @@ int send_keepalive(int listen, int udp, uint16_t size, const struct sockaddr *pe
 
 int main(int argc, char *argv[])
 {
-    int tap, udp, listen;
+    int n, tap, udp, listen;
     uint32_t nonce_prefix;
     unsigned char oursk[KEYBYTES];
     unsigned char theirpk[KEYBYTES];
     struct sockaddr *server;
     socklen_t srvlen;
 
-    /*
-     * We require exactly five arguments: the interface name, the name
-     * of a file that contains our private key, the name of a file that
-     * contains the other side's public key, and the address and port of
-     * the server side.
-     */
-
     if (argc < 7) {
-        fprintf(stderr, "Usage: tappet ifaceN nonce-file /our/privkey /their/pubkey address port [-l]\n");
+        fprintf(stderr, "Usage: tappet [-l] ifaceN /our/privkey address port"
+                "/their/pubkey /their/nonce\n");
         return -1;
     }
 
     /*
-     * Attach to the given TAP interface as an ordinary user (so that we
-     * don't create it by mistake; we assume it's already configured).
+     * If the first argument is an optional -l, we will listen for
+     * incoming packets on the given address:port.
+     */
+
+    n = 1;
+    listen = strcmp(argv[n], "-l") == 0;
+    if (listen)
+        n++;
+
+    /*
+     * Next is the name of a TAP interface, which must be created and
+     * configured beforehand. We want to attach to it as an ordinary
+     * user so that we can't create it by mistake.
      */
 
     if (geteuid() == 0) {
@@ -44,29 +49,17 @@ int main(int argc, char *argv[])
         return -1;
     }
 
-    tap = tap_attach(argv[1]);
+    tap = tap_attach(argv[n]);
     if (tap < 0)
         return -1;
 
     /*
-     * Read a four-byte value from the given nonce file, increment it,
-     * write it back out, and use the value as the nonce prefix.
+     * Next is the path to our private key, which we assume was created
+     * using tappet-keygen.
      */
 
-    nonce_prefix = get_nonce_prefix(argv[2]);
-    if (nonce_prefix == 0)
-        return -1;
-
-    /*
-     * Load our own secret key and the other side's public key from the
-     * given files. We assume that the keys have been competently
-     * generated.
-     */
-
-    if (read_key(argv[3], oursk) < 0)
-        return -1;
-
-    if (read_key(argv[4], theirpk) < 0)
+    n++;
+    if (read_key(argv[n], oursk) < 0)
         return -1;
 
     /*
@@ -75,15 +68,35 @@ int main(int argc, char *argv[])
      * into a sockaddr.
      */
 
-    if (get_sockaddr(argv[5], argv[6], &server, &srvlen) < 0)
+    n++;
+    if (get_sockaddr(argv[n], argv[n+1], &server, &srvlen) < 0)
+        return -1;
+    n++;
+
+    /*
+     * The next two arguments are the path to a peer's public key (which
+     * we assume was created using tappet-keygen) and a nonce file.
+     */
+
+    n++;
+    if (read_key(argv[n], theirpk) < 0)
         return -1;
 
     /*
-     * Now we create a UDP socket. If there's a remaining -l, we'll also
-     * bind the server sockaddr to it.
+     * Read a four-byte value from the given nonce file, increment it,
+     * write it back out, and use the value as the nonce prefix.
      */
 
-    listen = argc > 7 && strcmp(argv[7], "-l") == 0;
+    n++;
+    nonce_prefix = get_nonce_prefix(argv[n]);
+    if (nonce_prefix == 0)
+        return -1;
+
+    /*
+     * Now we create a UDP socket and, if -l was the first argument,
+     * also bind the server sockaddr to it.
+     */
+
     udp = udp_socket(listen, server, srvlen);
     if (udp < 0)
         return -1;
