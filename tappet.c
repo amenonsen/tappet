@@ -22,6 +22,9 @@ int main(int argc, char *argv[])
     struct sockaddr *server;
     socklen_t srvlen;
 
+    setvbuf(stdout, NULL, _IOLBF, BUFSIZ);
+    setvbuf(stderr, NULL, _IOLBF, BUFSIZ);
+
     if (argc < 7) {
         fprintf(stderr, "Usage: tappet ifaceN nonce-file /our/privkey"
                 "/their/pubkey address port [-l]\n");
