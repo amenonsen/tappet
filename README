@@ -28,8 +28,9 @@ The encryption adds a constant 56 bytes of overhead to every ethernet
 frame, which are themselves about 18 bytes larger than their payload.
 The MTU of both TAP interfaces should therefore be set to at least 74
 bytes less than the PMTU between the two ends of the tunnel. If there
-are MTU problems, packets will mysteriously disappear. There is often
-no good way to find the right MTU other than by experimentation.
+are MTU problems, the connection will be very slow or packets
+mysteriously disappear. There is often no good way to find the right
+MTU other than by experimentation.
 
 » Usage
 
