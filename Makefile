@@ -1,3 +1,5 @@
+VERSION = $(shell git describe)
+
 NACLLIB = nacl/build/lib
 NACLINC = nacl/build/include
 
@@ -21,6 +23,14 @@ $(EXEC): $(OBJS) $(NACL)
 
 $(NACL):
 	cd nacl && ./do && ./link
+
+deb: $(EXEC)
+	fpm -s dir -t deb -n tappet -v $(VERSION) \
+		--after-install pkg/after-install.sh \
+		--after-remove pkg/after-remove.sh \
+		./tappet=/usr/sbin/tappet \
+		./tappet-keygen=/usr/sbin/tappet-keygen \
+		./pkg/tappet@.service=/lib/systemd/system/tappet@.service
 
 clean:
 	rm -f $(OBJS) $(EXEC)

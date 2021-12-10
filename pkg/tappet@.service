@@ -1,0 +1,16 @@
+[Unit]
+Description=Tappet VPN for %i
+
+[Service]
+User=tappet
+WorkingDirectory=/var/lib/tappet
+EnvironmentFile=/var/lib/tappet/%i.env
+ExecStartPre=/sbin/ip tuntap add tappet-%i mode tap user tappet
+ExecStartPre=/var/lib/tappet/%i-pre.sh
+ExecStart=/usr/sbin/tappet tappet-%i $NONCE $KEY $PUB $ADDR $PORT $MODE
+ExecStopPost=/var/lib/tappet/%i-post.sh
+ExecStopPost=/sbin/ip tuntap del tappet-%i mode tap
+PermissionsStartOnly=true
+
+[Install]
+WantedBy=multi-user.target
