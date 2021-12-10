@@ -55,14 +55,14 @@ int main()
 
     i = 0;
     while (i < 123140) {
-        update_nonce(0, n);
+        update_nonce(n);
         i++;
     }
     dump("n'", n, crypto_box_NONCEBYTES);
 
     i = 0;
     while (i < 35983224) {
-        update_nonce(0, n);
+        update_nonce(n);
         i++;
     }
     dump("n''", n, crypto_box_NONCEBYTES);
