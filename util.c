@@ -496,6 +496,14 @@ int udp_write(int udp, unsigned char nonce[NONCEBYTES],
                     "dropping packet\n", len, len-74);
             return 0;
         }
+        else if (errno == ENETUNREACH) {
+            /*
+             * This means that tappet was started before we established
+             * a connection to the network, so we have no choice but to
+             * discard whatever this packet is.
+             */
+            return 0;
+        }
         fprintf(stderr, "Error writing to UDP socket: %s\n",
                 strerror(errno));
         return -1;
